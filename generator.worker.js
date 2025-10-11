@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with "High-Value Part" stacking correctly re-integrated.
+// Definitive version with a corrected, predictable length calculation.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -65,15 +65,14 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 const parentTail = randomChoice(selectedRepoTails);
+                
+                // --- THIS IS THE CRITICAL FIX ---
+                // The target length is now ALWAYS based on the Base Seed's length, making it predictable.
+                const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+                
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
                 
-                const averageLength = (baseTail.length + parentTail.length) / 2;
-                const finalMin = averageLength + config.minOffset;
-                const finalMax = averageLength + config.maxOffset;
-                const finalTarget = averageLength + config.targetOffset;
-                const dynamicTargetLength = Math.floor(Math.max(finalMin, Math.min(finalMax, finalTarget)));
-
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
 
@@ -83,11 +82,10 @@ self.onmessage = async function(e) {
                     mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
                 }
                 
-                // --- STACKING FEATURE RE-INTEGRATED ---
                 if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
                     const part = randomChoice(highValueParts);
                     const mutableStart = protectedStartLength;
-                    const mutableEnd = mutatedTail.length - 5; // Keep a small buffer at the very end
+                    const mutableEnd = mutatedTail.length - 5; 
                     if (mutableEnd > mutableStart && (mutableEnd - mutableStart) > part.length) {
                         const injectionPoint = randomInt(mutableStart, mutableEnd - part.length);
                         mutatedTail = mutatedTail.slice(0, injectionPoint) + part + mutatedTail.slice(injectionPoint + part.length);
