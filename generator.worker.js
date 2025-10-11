@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with advanced mutation logic, GPU acceleration, UI-driven tuning, and all functions correctly included.
+// Definitive version with all functions correctly defined, including the dual-path "Chaotic" and "Evolutionary" logic.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc";
@@ -8,7 +8,7 @@ const ALLOWED_EXTRA = "/";
 const ALPHABET = BASE85_ALPHABET + ALLOWED_EXTRA;
 const HEADER_RE = /^(@U[^!]*!)/;
 const TG_FLAGS = { "NEW": 0, "TG1": 17, "TG2": 33, "TG3": 65, "TG4": 129 };
-const RANDOM_SAFETY_MARGIN = 1000;
+const RANDOM_SAFETY_MARGIN = 2000;
 
 // --- GPU & RANDOMNESS STATE ---
 let gpuDevice = null;
@@ -114,13 +114,11 @@ async function generateRandomNumbersOnGPU(count) {
     randomIndex = 0;
 }
 
-// --- START: ALL HELPER AND MUTATION FUNCTIONS (Unminified) ---
-
+// --- UTILITY AND MUTATION FUNCTIONS ---
 function randomInt(min, max) { return Math.floor(getRandom() * (max - min + 1)) + min; }
 function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
 
-// THIS WAS THE MISSING FUNCTION
 function splitHeaderTail(serial) {
     const match = serial.match(HEADER_RE);
     if (match) return [match[1], serial.substring(match[0].length)];
@@ -181,8 +179,24 @@ function generateTargetedMutation(baseTail, highValueParts, fallbackRepoTails) {
     return performCrossoverMutation(baseTail, partnerTail);
 }
 
-// --- END: ALL HELPER AND MUTATION FUNCTIONS ---
+function buildFragmentPool(tail, minLen = 3, maxLen = 8) {
+    const fragments = new Set();
+    if (!tail || tail.length < maxLen) return [''];
+    for (let i = 0; i < tail.length - maxLen; i += Math.floor(maxLen / 2)) {
+        const len = randomInt(minLen, maxLen);
+        fragments.add(tail.substring(i, i + len));
+    }
+    return Array.from(fragments);
+}
 
+function generateChaoticMutation(fragmentPool, targetLength) {
+    if (!fragmentPool || fragmentPool.length === 0) return '';
+    let newTail = '';
+    while (newTail.length < targetLength) {
+        newTail += randomChoice(fragmentPool);
+    }
+    return newTail.substring(0, targetLength);
+}
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function(e) {
@@ -201,37 +215,33 @@ self.onmessage = async function(e) {
             return;
         }
 
-        const legendaryStackingChance = config.legendaryChance / 100.0;
-        const crossoverChance = config.crossoverChance / 100.0;
-
         await generateRandomNumbersOnGPU(config.gpuBatchSize);
         
         const seedInput = config.seed || DEFAULT_SEED;
         const [baseHeader, baseTail] = splitHeaderTail(seedInput);
         
-        const allRepoTails = [];
-        for (const itemType in config.repositories) {
-            config.repositories[itemType].split(/[\s\n]+/g).filter(s => s.startsWith('@U'))
-                .forEach(serial => allRepoTails.push(splitHeaderTail(serial)[1]));
-        }
-        const highValueParts = extractHighValueParts(allRepoTails, config.partSize);
-        
-        if (highValueParts.length === 0 && config.tg4Count > 0) {
-            self.postMessage({ type: 'warning', payload: 'No high-value parts found for TG4 fallback.' });
-        }
-        const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/g).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
+        const baseFragmentPool = buildFragmentPool(baseTail);
+        const legendaryStackingChance = config.legendaryChance / 100.0;
+        const selectedRepoTails = config.repositories[config.itemType]
+            .split(/[\s\n]+/g).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
+
         if (selectedRepoTails.length === 0) {
-            self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed.` });
+            self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed for TG1-4 mutations.` });
             selectedRepoTails.push(baseTail);
         }
-        const fallbackRepo = allRepoTails.length > 0 ? allRepoTails : [baseTail];
+        const highValueParts = extractHighValueParts(selectedRepoTails, config.partSize);
+        
+        if (highValueParts.length === 0 && config.tg4Count > 0) {
+            self.postMessage({ type: 'warning', payload: `No high-value parts in **${config.itemType}** repo. TG4 will use crossover.` });
+        }
+        
         const serialsToGenerate = [];
         for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: "NEW", flag: TG_FLAGS["NEW"] });
         for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: "TG1", flag: TG_FLAGS["TG1"] });
         for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: "TG2", flag: TG_FLAGS["TG2"] });
         for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: "TG3", flag: TG_FLAGS["TG3"] });
         for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: "TG4", flag: TG_FLAGS["TG4"] });
-        serialsToGenerate.sort(() => Math.random() - 0.5);
+        serialsToGenerate.sort(() => getRandom() - 0.5);
 
         const seenSerials = new Set();
         const generatedSerials = [];
@@ -249,17 +259,19 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 let mutatedTail;
-                if (item.tg === "TG4") {
-                    mutatedTail = generateTargetedMutation(baseTail, highValueParts, fallbackRepo);
+
+                if (item.tg === "NEW") {
+                    mutatedTail = generateChaoticMutation(baseFragmentPool, config.targetTail);
                 } else {
-                    if (item.tg === "TG3" && getRandom() < legendaryStackingChance) {
+                    if (item.tg === "TG4") {
+                        mutatedTail = generateTargetedMutation(baseTail, highValueParts, selectedRepoTails);
+                    } else if (item.tg === "TG3" && getRandom() < legendaryStackingChance) {
                         mutatedTail = performLegendaryStacking(baseTail, highValueParts);
-                    } else if ((item.tg === "TG2" || item.tg === "TG3") && getRandom() < crossoverChance) {
-                        mutatedTail = performCrossoverMutation(baseTail, randomChoice(selectedRepoTails));
                     } else {
-                        mutatedTail = performCrossoverMutation(baseTail, randomChoice(fallbackRepo));
+                        mutatedTail = performCrossoverMutation(baseTail, randomChoice(selectedRepoTails));
                     }
                 }
+
                 if (mutatedTail.length > config.maxTail) mutatedTail = mutatedTail.substring(0, config.maxTail);
                 while (mutatedTail.length < config.minTail) mutatedTail += randomChoice(ALPHABET);
 

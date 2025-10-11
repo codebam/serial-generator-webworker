@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borderlands 4 Serial Mutation Engine (v3.7 - Final Fix)</title>
+    <title>Borderlands 4 Serial Mutation Engine (v4.2 - Final)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #1a1a2e; color: #d4d4f4; display: flex; flex-direction: column; gap: 20px; }
         h1 { color: #ff9900; border-bottom: 2px solid #3e2060; padding-bottom: 10px; margin-bottom: 0; }
@@ -24,8 +24,8 @@
         #copy-btn:hover { background-color: #66BB6A; }
         #download-btn { background-color: #007bff; color: white; margin-left: 5px; }
         #download-btn:hover { background-color: #0056b3; }
-        #clear-btn { background-color: #dc3545; color: white; width: 100%; margin-top: 5px; }
-        #clear-btn:hover { background-color: #c82333; }
+        #reset-btn { background-color: #6c757d; color: white; width: 100%; margin-top: 8px; }
+        #reset-btn:hover { background-color: #5a6268; }
         .status-bar { padding: 10px; background-color: #3e2060; border-radius: 4px; margin-bottom: 10px; font-weight: bold; }
         .progress-container { width: 100%; background-color: #4a4a7a; border-radius: 5px; margin-top: 10px; overflow: hidden; }
         .progress-bar { height: 20px; background-color: #99ffff; width: 0%; text-align: center; line-height: 20px; color: #1a1a2e; font-weight: bold; transition: width 0.3s; }
@@ -41,18 +41,43 @@
     
     <div class="container">
         <div class="controls">
-            <div class="form-group"><label for="item-type">Item Mutation Target</label><select id="item-type"><option value="class_mod" selected>Class Mod</option><option value="shield">Shield</option><option value="enhancement">Enhancement</option><option value="gun">Gun</option><option value="repkit">Repkit</option></select></div>
-            <h2>📦 God Roll Repositories</h2><p style="font-size: 0.9em; color: #99ffff;">Selected type below is used for TG1-3 mutations.</p><div class="repo-group"><div class="form-group"><label for="class_mod_repo">Class Mod Serials</label><textarea id="class_mod_repo" class="repo-textarea" placeholder="Paste Class Mod serials here..."></textarea></div><div class="form-group"><label for="shield_repo">Shield Serials</label><textarea id="shield_repo" class="repo-textarea" placeholder="Paste Shield serials here..."></textarea></div><div class="form-group"><label for="enhancement_repo">Enhancement Serials</label><textarea id="enhancement_repo" class="repo-textarea" placeholder="Paste Enhancement serials here..."></textarea></div><div class="form-group"><label for="gun_repo">Gun Serials</label><textarea id="gun_repo" class="repo-textarea" placeholder="Paste Gun serials here..."></textarea></div><div class="form-group" style="grid-column: 1 / 3;"><label for="repkit_repo">Repkit Serials</label><textarea id="repkit_repo" class="repo-textarea" placeholder="Paste Repkit serials here..."></textarea></div></div>
+            <div class="form-group">
+                <label for="item-type">Item Mutation Target</label>
+                <select id="item-type">
+                    <option value="class_mod" selected>Class Mod</option>
+                    <option value="shield">Shield</option>
+                    <option value="ordnance">Ordnance</option>
+                    <option value="enhancement">Enhancement</option>
+                    <option value="gun">Gun</option>
+                    <option value="repkit">Repkit</option>
+                </select>
+            </div>
+            
+            <h2>📦 God Roll Repositories</h2>
+            <p style="font-size: 0.9em; color: #99ffff;">Selected type below is used for mutations.</p>
+            <div class="repo-group">
+                <div class="form-group"><label for="class_mod_repo">Class Mod Serials</label><textarea id="class_mod_repo" class="repo-textarea" placeholder="Paste complete Class Mod serials here..."></textarea></div>
+                <div class="form-group"><label for="shield_repo">Shield Serials</label><textarea id="shield_repo" class="repo-textarea" placeholder="Paste complete Shield serials here..."></textarea></div>
+                <div class="form-group"><label for="enhancement_repo">Enhancement Serials</label><textarea id="enhancement_repo" class="repo-textarea" placeholder="Paste complete Enhancement serials here..."></textarea></div>
+                <div class="form-group"><label for="gun_repo">Gun Serials</label><textarea id="gun_repo" class="repo-textarea" placeholder="Paste complete Gun serials here..."></textarea></div>
+                <div class="form-group"><label for="ordnance_repo">Ordnance Serials</label><textarea id="ordnance_repo" class="repo-textarea" placeholder="Paste complete Ordnance serials here..."></textarea></div>
+                <div class="form-group"><label for="repkit_repo">Repkit Serials</label><textarea id="repkit_repo" class="repo-textarea" placeholder="Paste complete Repkit serials here..."></textarea></div>
+            </div>
             <hr style="border-top: 1px solid #4a4a7a; margin: 20px 0;">
             <div class="form-group"><label for="seed">Base Serial Seed</label><textarea id="seed" rows="5" placeholder="Enter your base serial seed..."></textarea></div>
             <h2>Mutation Tail Lengths</h2><div class="tag-input-group"><div class="form-group"><label for="min-tail">Min Tail</label><input type="number" id="min-tail" value="50"></div><div class="form-group"><label for="max-tail">Max Tail</label><input type="number" id="max-tail" value="400"></div><div class="form-group"><label for="target-tail">Target Tail</label><input type="number" id="target-tail" value="350"></div></div>
             <h2>Serial Count by Tag Group</h2><p style="font-size: 0.9em; color: #d4d4f4;">TG4 uses "High-Value Part" mutation.</p><div class="tag-input-group"><div class="form-group"><label for="new-count">NEW (0)</label><input type="number" id="new-count" value="10000" min="0"></div><div class="form-group"><label for="tg1-count">TG1 (17)</label><input type="number" id="tg1-count" value="0" min="0"></div><div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div><div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div><div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div></div>
             <hr style="border-top: 1px solid #4a4a7a; margin: 20px 0;">
-            <h2>⚙️ Advanced Tuning</h2><p style="font-size: 0.9em; color: #d4d4f4;">Modify the algorithm. Settings are saved automatically.</p><div class="tag-input-group"><div class="form-group"><label for="part-size">High-Value Part Size</label><input type="number" id="part-size" value="5" min="3" max="10"></div><div class="form-group"><label for="legendary-chance">TG3 "Stacking" Chance (%)</label><input type="number" id="legendary-chance" value="30" min="0" max="100"></div><div class="form-group"><label for="crossover-chance">TG2/3 Crossover Chance (%)</label><input type="number" id="crossover-chance" value="75" min="0" max="100"></div><div class="form-group"><label for="progress-chunk-size">Progress Update Frequency</label><input type="number" id="progress-chunk-size" value="500" min="50"></div><div class="form-group" style="grid-column: 1 / 3;"><label for="gpu-batch-size">GPU Random Number Batch Size</label><input type="number" id="gpu-batch-size" value="250000" min="50000"></div></div>
-            <button id="clear-btn" onclick="clearState()">Clear Saved Settings & Reset to Defaults</button>
+            <h2>⚙️ Advanced Tuning</h2><p style="font-size: 0.9em; color: #d4d4f4;">Modify the mutation algorithm and performance.</p><div class="tag-input-group"><div class="form-group"><label for="part-size">High-Value Part Size</label><input type="number" id="part-size" value="5" min="3" max="10"></div><div class="form-group"><label for="legendary-chance">TG3 "Stacking" Chance (%)</label><input type="number" id="legendary-chance" value="30" min="0" max="100"></div><div class="form-group"><label for="crossover-chance">TG2/3 Crossover Chance (%)</label><input type="number" id="crossover-chance" value="75" min="0" max="100"></div><div class="form-group"><label for="progress-chunk-size">Progress Update Frequency</label><input type="number" id="progress-chunk-size" value="500" min="50"></div><div class="form-group" style="grid-column: 1 / 3;"><label for="gpu-batch-size">GPU Random Number Batch Size</label><input type="number" id="gpu-batch-size" value="250000" min="50000"></div></div>
+            
             <div class="status-bar" id="status-message">Ready to generate.</div>
-            <div class="progress-container hidden" id="progress-container"><div class="progress-bar" id="progress-bar"><span id="progress-percent">0%</span></div></div>
+            <div class="progress-container hidden" id="progress-container">
+                <div class="progress-bar" id="progress-bar"><span id="progress-percent">0%</span></div>
+            </div>
+            
             <button id="generate-btn" onclick="startGeneration()">GENERATE SERIALS</button>
+            <button id="reset-btn" onclick="resetFormWithConfirm()">RESET FORM</button>
+
         </div>
         <div class="output">
             <h2>YAML Output <button id="copy-btn" onclick="copyToClipboard()"><span id="copy-text">Copy</span></button><button id="download-btn" onclick="downloadYAML()"><span id="download-text">Download</span></button></h2>
@@ -62,30 +87,15 @@
 
 <script>
     const worker = new Worker('generator.worker.js');
-    const LOCAL_STORAGE_KEY = 'serialGeneratorState_v1';
-    const allInputIds = [
-        'item-type', 'class_mod_repo', 'shield_repo', 'enhancement_repo', 'gun_repo', 'repkit_repo',
-        'seed', 'min-tail', 'max-tail', 'target-tail',
-        'new-count', 'tg1-count', 'tg2-count', 'tg3-count', 'tg4-count',
-        'part-size', 'legendary-chance', 'crossover-chance', 'progress-chunk-size', 'gpu-batch-size'
-    ];
 
-    // --- MESSAGE HANDLING FROM WORKER ---
+    // --- MESSAGE HANDLING ---
     worker.onmessage = function(e) {
         const { type, payload } = e.data;
         switch(type) {
-            case 'progress':
-                updateProgress(payload.processed, payload.total);
-                break;
-            case 'complete':
-                finalizeGeneration(payload.yaml, payload.uniqueCount, payload.totalRequested);
-                break;
-            case 'warning':
-                document.getElementById('status-message').textContent = `Warning: ${payload}`;
-                break;
-            case 'error':
-                handleError(payload.message);
-                break;
+            case 'progress': updateProgress(payload.processed, payload.total); break;
+            case 'complete': finalizeGeneration(payload.yaml, payload.uniqueCount, payload.totalRequested); break;
+            case 'warning': document.getElementById('status-message').textContent = `Warning: ${payload}`; break;
+            case 'error': handleError(payload.message); break;
         }
     };
 
@@ -112,66 +122,13 @@
         document.getElementById('generate-btn').disabled = false;
     }
 
-    // --- STATE PERSISTENCE FUNCTIONS ---
-    function saveState() {
-        try {
-            const state = {};
-            allInputIds.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    state[id] = element.value;
-                }
-            });
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-            console.log("State saved to localStorage.");
-        } catch (error) {
-            console.error("Failed to save state to localStorage:", error);
-        }
-    }
-
-    function loadState() {
-        try {
-            const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (savedStateJSON) {
-                const savedState = JSON.parse(savedStateJSON);
-                allInputIds.forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element && savedState[id] !== undefined) {
-                        element.value = savedState[id];
-                    }
-                });
-                document.getElementById('status-message').textContent = "Loaded saved settings.";
-                console.log("State loaded from localStorage.");
-            } else {
-                setDefaults();
-            }
-        } catch (error) {
-            console.error("Failed to load state from localStorage:", error);
-            setDefaults();
-        }
-    }
-
-    function clearState() {
-        if (confirm("Are you sure you want to clear all saved settings and reset the form to its original defaults?")) {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            location.reload();
-        }
-    }
-
-    function setDefaults() {
-        const DEFAULT_SEED = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc";
-        document.getElementById('seed').value = DEFAULT_SEED;
-        document.getElementById('shield_repo').value = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS";
-        document.getElementById('status-message').textContent = "Ready to generate. Large batches may take some time.";
-    }
-
     // --- MAIN EXECUTION START ---
     function startGeneration() {
         const btn = document.getElementById('generate-btn');
         btn.disabled = true;
         document.getElementById('output-yaml').value = "";
         document.getElementById('progress-container').classList.remove('hidden');
-
+        
         const config = {
             seed: document.getElementById('seed').value,
             itemType: document.getElementById('item-type').value,
@@ -188,6 +145,7 @@
                 shield: document.getElementById('shield_repo').value,
                 enhancement: document.getElementById('enhancement_repo').value,
                 gun: document.getElementById('gun_repo').value,
+                ordnance: document.getElementById('ordnance_repo').value,
                 repkit: document.getElementById('repkit_repo').value,
             },
             partSize: parseInt(document.getElementById('part-size').value),
@@ -205,93 +163,104 @@
 
         document.getElementById('status-message').textContent = `Sending job to background thread...`;
         updateProgress(0, totalRequested);
-        
         worker.postMessage({ type: 'generate', payload: config });
     }
-
-    // --- UI UTILITY FUNCTIONS ---
+    
+    // --- UI UTILITIES ---
     async function copyToClipboard() {
         const textarea = document.getElementById('output-yaml');
         const copyText = document.getElementById('copy-text');
         const originalText = copyText.textContent;
         const yamlContent = textarea.value;
-
-        if (!yamlContent) {
-            alert("There is no YAML content to copy.");
-            return;
-        }
-
+        if (!yamlContent) return alert("There is no YAML content to copy.");
         if (navigator.clipboard && window.isSecureContext) {
             try {
                 await navigator.clipboard.writeText(yamlContent);
                 copyText.textContent = "Copied!";
             } catch (err) {
-                console.error('Asynchronous copy failed: ', err);
                 copyText.textContent = "Copy Failed";
-                alert("Could not copy text. Your browser might have blocked the request or the content is too large.");
+                alert("Could not copy text. Your browser might have blocked the request.");
             } finally {
                 setTimeout(() => { copyText.textContent = originalText; }, 2000);
             }
         } else {
-            console.warn("Using fallback copy method. This may not work for very large amounts of text.");
             textarea.select();
-            try {
-                document.execCommand('copy');
-                copyText.textContent = "Copied (Fallback)";
-            } catch (err) {
-                console.error('Fallback copy failed: ', err);
-                copyText.textContent = "Error";
-            } finally {
-                setTimeout(() => { copyText.textContent = originalText; }, 2000);
-            }
+            try { document.execCommand('copy'); copyText.textContent = "Copied!"; }
+            catch (err) { copyText.textContent = "Error"; }
+            finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); }
         }
     }
 
     function downloadYAML() {
-        const textarea = document.getElementById('output-yaml');
-        const yamlContent = textarea.value;
+        const yamlContent = document.getElementById('output-yaml').value;
         const downloadText = document.getElementById('download-text');
         const originalText = downloadText.textContent;
-
-        if (!yamlContent) {
-            alert("There is no YAML content to download.");
-            return;
-        }
-
+        if (!yamlContent) return alert("There is no YAML content to download.");
         try {
             const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            
             link.setAttribute("href", url);
             link.setAttribute("download", "generated_serials.yaml");
-            link.style.display = 'none';
             document.body.appendChild(link);
-            
             link.click();
-            
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
             downloadText.textContent = "Downloaded!";
         } catch (err) {
-            console.error('Could not initiate download: ', err);
             downloadText.textContent = "Error";
         } finally {
             setTimeout(() => { downloadText.textContent = originalText; }, 2000);
         }
     }
 
-    // --- PAGE LOAD ---
+    function resetForm() {
+        const DEFAULT_SEED = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc";
+        
+        const repoIds = ['class_mod_repo', 'shield_repo', 'enhancement_repo', 'gun_repo', 'ordnance_repo', 'repkit_repo'];
+        repoIds.forEach(id => document.getElementById(id).value = '');
+
+        document.getElementById('item-type').value = 'class_mod';
+        document.getElementById('seed').value = DEFAULT_SEED;
+        
+        document.getElementById('new-count').value = 10000;
+        document.getElementById('tg1-count').value = 0;
+        document.getElementById('tg2-count').value = 0;
+        document.getElementById('tg3-count').value = 0;
+        document.getElementById('tg4-count').value = 0;
+        
+        document.getElementById('min-tail').value = 50;
+        document.getElementById('max-tail').value = 400;
+        document.getElementById('target-tail').value = 350;
+        
+        document.getElementById('part-size').value = 5;
+        document.getElementById('legendary-chance').value = 30;
+        document.getElementById('crossover-chance').value = 75;
+        document.getElementById('progress-chunk-size').value = 500;
+        document.getElementById('gpu-batch-size').value = 250000;
+
+        document.getElementById('output-yaml').value = "";
+        document.getElementById('status-message').textContent = "Form reset to defaults. Ready to generate 10,000 NEW items.";
+        document.getElementById('progress-container').classList.add('hidden');
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-percent').textContent = '0%';
+    }
+    
+    function resetFormWithConfirm() {
+        if (confirm("Are you sure you want to reset all fields to their default values?")) {
+            resetForm();
+        }
+    }
+
     window.onload = () => {
-        loadState();
-        allInputIds.forEach(id => {
-            const element = document.getElementById(id);
-            if(element) {
-                const eventType = element.tagName === 'SELECT' ? 'change' : 'input';
-                element.addEventListener(eventType, saveState);
-            }
-        });
+        if (document.getElementById('seed').value === '') {
+            console.log("First visit detected. Setting form defaults.");
+            resetForm();
+        } else {
+            console.log("Browser has restored form state. No changes made.");
+            document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate.";
+        }
     };
 </script>
 
