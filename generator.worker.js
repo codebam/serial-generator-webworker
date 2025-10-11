@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with a corrected, predictable length calculation.
+// Definitive version with a corrected genetic fallback path.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -25,7 +25,7 @@ function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; const hdr = serial.substring(0, 10); return [hdr, serial.substring(10)]; }
 function extractHighValueParts(repoTails, partSize) { const highValueParts = new Set(); const frequencyMap = new Map(); for (const tail of repoTails) { for (let i = 0; i <= tail.length - (partSize * 2); i++) { const fragment1 = tail.substring(i, i + partSize); const fragment2 = tail.substring(i + partSize, i + (partSize * 2)); if (fragment1 === fragment2) highValueParts.add(fragment1); } for (let i = 0; i <= tail.length - partSize; i++) { const fragment = tail.substring(i, i + partSize); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } const sortedByFrequency = [...frequencyMap.entries()].sort((a, b) => b[1] - a[1]); sortedByFrequency.slice(0, 20).forEach(entry => highValueParts.add(entry[0])); return Array.from(highValueParts); }
 
-// --- INTELLIGENT MUTATION ALGORITHMS v15.0 ---
+// --- INTELLIGENT MUTATION ALGORITHMS v15.1 ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) { return startPart.substring(0, finalLength); } let padding = ''; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } return startPart + padding; }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; const paddingLength = finalLength - childTail.length; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
 
@@ -65,21 +65,32 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 const parentTail = randomChoice(selectedRepoTails);
-                
-                // --- THIS IS THE CRITICAL FIX ---
-                // The target length is now ALWAYS based on the Base Seed's length, making it predictable.
-                const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
-                
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
                 
+                const averageLength = (baseTail.length + parentTail.length) / 2;
+                const finalMin = averageLength + config.minOffset;
+                const finalMax = averageLength + config.maxOffset;
+                const finalTarget = averageLength + config.targetOffset;
+                const dynamicTargetLength = Math.floor(Math.max(finalMin, Math.min(finalMax, finalTarget)));
+
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
 
-                if (item.tg === "NEW" || mutableZone < config.minChunkSize) {
+                // --- THIS IS THE CRITICAL FIX ---
+                if (item.tg === "NEW") {
+                    // NEW items ONLY use the base seed. This is correct.
                     mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
                 } else {
-                    mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
+                    // ALL TG1-4 items use this path.
+                    if (mutableZone < config.minChunkSize) {
+                        // The FALLBACK path. The transplant is impossible.
+                        // It now correctly uses the REPO PARENT as the base for the append.
+                        mutatedTail = generateAppendMutation(parentTail, dynamicTargetLength, protectedStartLength);
+                    } else {
+                        // The GOLDEN path. The transplant is possible.
+                        mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
+                    }
                 }
                 
                 if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
