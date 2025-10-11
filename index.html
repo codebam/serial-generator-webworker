@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borderlands 4 Serial Mutation Engine (v3.6 - Persistent State)</title>
+    <title>Borderlands 4 Serial Mutation Engine (v3.7 - Final Fix)</title>
     <style>
-        /* CSS is identical, with an addition for the clear button */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #1a1a2e; color: #d4d4f4; display: flex; flex-direction: column; gap: 20px; }
         h1 { color: #ff9900; border-bottom: 2px solid #3e2060; padding-bottom: 10px; margin-bottom: 0; }
         h2 { color: #99ffff; margin-top: 15px; margin-bottom: 5px; }
@@ -25,7 +24,6 @@
         #copy-btn:hover { background-color: #66BB6A; }
         #download-btn { background-color: #007bff; color: white; margin-left: 5px; }
         #download-btn:hover { background-color: #0056b3; }
-        /* --- NEW STYLE FOR CLEAR BUTTON --- */
         #clear-btn { background-color: #dc3545; color: white; width: 100%; margin-top: 5px; }
         #clear-btn:hover { background-color: #c82333; }
         .status-bar { padding: 10px; background-color: #3e2060; border-radius: 4px; margin-bottom: 10px; font-weight: bold; }
@@ -43,7 +41,6 @@
     
     <div class="container">
         <div class="controls">
-            <!-- All previous form sections are unchanged -->
             <div class="form-group"><label for="item-type">Item Mutation Target</label><select id="item-type"><option value="class_mod" selected>Class Mod</option><option value="shield">Shield</option><option value="enhancement">Enhancement</option><option value="gun">Gun</option><option value="repkit">Repkit</option></select></div>
             <h2>📦 God Roll Repositories</h2><p style="font-size: 0.9em; color: #99ffff;">Selected type below is used for TG1-3 mutations.</p><div class="repo-group"><div class="form-group"><label for="class_mod_repo">Class Mod Serials</label><textarea id="class_mod_repo" class="repo-textarea" placeholder="Paste Class Mod serials here..."></textarea></div><div class="form-group"><label for="shield_repo">Shield Serials</label><textarea id="shield_repo" class="repo-textarea" placeholder="Paste Shield serials here..."></textarea></div><div class="form-group"><label for="enhancement_repo">Enhancement Serials</label><textarea id="enhancement_repo" class="repo-textarea" placeholder="Paste Enhancement serials here..."></textarea></div><div class="form-group"><label for="gun_repo">Gun Serials</label><textarea id="gun_repo" class="repo-textarea" placeholder="Paste Gun serials here..."></textarea></div><div class="form-group" style="grid-column: 1 / 3;"><label for="repkit_repo">Repkit Serials</label><textarea id="repkit_repo" class="repo-textarea" placeholder="Paste Repkit serials here..."></textarea></div></div>
             <hr style="border-top: 1px solid #4a4a7a; margin: 20px 0;">
@@ -52,9 +49,7 @@
             <h2>Serial Count by Tag Group</h2><p style="font-size: 0.9em; color: #d4d4f4;">TG4 uses "High-Value Part" mutation.</p><div class="tag-input-group"><div class="form-group"><label for="new-count">NEW (0)</label><input type="number" id="new-count" value="10000" min="0"></div><div class="form-group"><label for="tg1-count">TG1 (17)</label><input type="number" id="tg1-count" value="0" min="0"></div><div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div><div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div><div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div></div>
             <hr style="border-top: 1px solid #4a4a7a; margin: 20px 0;">
             <h2>⚙️ Advanced Tuning</h2><p style="font-size: 0.9em; color: #d4d4f4;">Modify the algorithm. Settings are saved automatically.</p><div class="tag-input-group"><div class="form-group"><label for="part-size">High-Value Part Size</label><input type="number" id="part-size" value="5" min="3" max="10"></div><div class="form-group"><label for="legendary-chance">TG3 "Stacking" Chance (%)</label><input type="number" id="legendary-chance" value="30" min="0" max="100"></div><div class="form-group"><label for="crossover-chance">TG2/3 Crossover Chance (%)</label><input type="number" id="crossover-chance" value="75" min="0" max="100"></div><div class="form-group"><label for="progress-chunk-size">Progress Update Frequency</label><input type="number" id="progress-chunk-size" value="500" min="50"></div><div class="form-group" style="grid-column: 1 / 3;"><label for="gpu-batch-size">GPU Random Number Batch Size</label><input type="number" id="gpu-batch-size" value="250000" min="50000"></div></div>
-            <!-- --- NEW CLEAR BUTTON --- -->
             <button id="clear-btn" onclick="clearState()">Clear Saved Settings & Reset to Defaults</button>
-            
             <div class="status-bar" id="status-message">Ready to generate.</div>
             <div class="progress-container hidden" id="progress-container"><div class="progress-bar" id="progress-bar"><span id="progress-percent">0%</span></div></div>
             <button id="generate-btn" onclick="startGeneration()">GENERATE SERIALS</button>
@@ -67,15 +62,55 @@
 
 <script>
     const worker = new Worker('generator.worker.js');
-    const LOCAL_STORAGE_KEY = 'serialGeneratorState_v1'; // Use a versioned key
-
-    // List of all input IDs to be saved
+    const LOCAL_STORAGE_KEY = 'serialGeneratorState_v1';
     const allInputIds = [
         'item-type', 'class_mod_repo', 'shield_repo', 'enhancement_repo', 'gun_repo', 'repkit_repo',
         'seed', 'min-tail', 'max-tail', 'target-tail',
         'new-count', 'tg1-count', 'tg2-count', 'tg3-count', 'tg4-count',
         'part-size', 'legendary-chance', 'crossover-chance', 'progress-chunk-size', 'gpu-batch-size'
     ];
+
+    // --- MESSAGE HANDLING FROM WORKER ---
+    worker.onmessage = function(e) {
+        const { type, payload } = e.data;
+        switch(type) {
+            case 'progress':
+                updateProgress(payload.processed, payload.total);
+                break;
+            case 'complete':
+                finalizeGeneration(payload.yaml, payload.uniqueCount, payload.totalRequested);
+                break;
+            case 'warning':
+                document.getElementById('status-message').textContent = `Warning: ${payload}`;
+                break;
+            case 'error':
+                handleError(payload.message);
+                break;
+        }
+    };
+
+    function updateProgress(processed, total) {
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const percent = total > 0 ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
+        progressBar.style.width = `${percent}%`;
+        progressPercent.textContent = `${percent}%`;
+        document.getElementById('status-message').textContent = `Generating... Processing ${processed.toLocaleString()} of ${total.toLocaleString()} serials.`;
+    }
+
+    function finalizeGeneration(yaml, uniqueCount, totalRequested) {
+        document.getElementById('output-yaml').value = yaml;
+        document.getElementById('status-message').textContent = `✅ Generation Complete! Wrote ${uniqueCount.toLocaleString()} unique serials. (Requested: ${totalRequested.toLocaleString()}).`;
+        document.getElementById('progress-container').classList.add('hidden');
+        document.getElementById('generate-btn').disabled = false;
+    }
+
+    function handleError(message) {
+        console.error("Worker Error:", message);
+        document.getElementById('status-message').textContent = `❌ ERROR: ${message}`;
+        document.getElementById('progress-container').classList.add('hidden');
+        document.getElementById('generate-btn').disabled = false;
+    }
 
     // --- STATE PERSISTENCE FUNCTIONS ---
     function saveState() {
@@ -101,7 +136,6 @@
                 const savedState = JSON.parse(savedStateJSON);
                 allInputIds.forEach(id => {
                     const element = document.getElementById(id);
-                    // Check if the key exists in the saved object before setting
                     if (element && savedState[id] !== undefined) {
                         element.value = savedState[id];
                     }
@@ -109,19 +143,18 @@
                 document.getElementById('status-message').textContent = "Loaded saved settings.";
                 console.log("State loaded from localStorage.");
             } else {
-                // If no saved state, set defaults
                 setDefaults();
             }
         } catch (error) {
             console.error("Failed to load state from localStorage:", error);
-            setDefaults(); // Fallback to defaults if parsing fails
+            setDefaults();
         }
     }
 
     function clearState() {
         if (confirm("Are you sure you want to clear all saved settings and reset the form to its original defaults?")) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
-            location.reload(); // Easiest way to reset the form to its initial state
+            location.reload();
         }
     }
 
@@ -139,29 +172,31 @@
         document.getElementById('output-yaml').value = "";
         document.getElementById('progress-container').classList.remove('hidden');
 
-        // The logic to gather config is now identical to saveState, just without the saving part.
-        const config = {};
-        allInputIds.forEach(id => {
-            // Convert numerical inputs from string to number
-            const element = document.getElementById(id);
-            config[id.replace(/-/g, '_')] = element.type === 'number' ? parseInt(element.value, 10) : element.value;
-        });
-        
-        // The config object sent to the worker needs the repository values nested
-        config.repositories = {
-            class_mod: config.class_mod_repo,
-            shield: config.shield_repo,
-            enhancement: config.enhancement_repo,
-            gun: config.gun_repo,
-            repkit: config.repkit_repo,
+        const config = {
+            seed: document.getElementById('seed').value,
+            itemType: document.getElementById('item-type').value,
+            minTail: parseInt(document.getElementById('min-tail').value),
+            maxTail: parseInt(document.getElementById('max-tail').value),
+            targetTail: parseInt(document.getElementById('target-tail').value),
+            newCount: parseInt(document.getElementById('new-count').value),
+            tg1Count: parseInt(document.getElementById('tg1-count').value),
+            tg2Count: parseInt(document.getElementById('tg2-count').value),
+            tg3Count: parseInt(document.getElementById('tg3-count').value),
+            tg4Count: parseInt(document.getElementById('tg4-count').value),
+            repositories: {
+                class_mod: document.getElementById('class_mod_repo').value,
+                shield: document.getElementById('shield_repo').value,
+                enhancement: document.getElementById('enhancement_repo').value,
+                gun: document.getElementById('gun_repo').value,
+                repkit: document.getElementById('repkit_repo').value,
+            },
+            partSize: parseInt(document.getElementById('part-size').value),
+            legendaryChance: parseInt(document.getElementById('legendary-chance').value),
+            crossoverChance: parseInt(document.getElementById('crossover-chance').value),
+            progressChunkSize: parseInt(document.getElementById('progress-chunk-size').value),
+            gpuBatchSize: parseInt(document.getElementById('gpu-batch-size').value)
         };
-        // Rename keys to match worker expectations
-        config.newCount = config.new_count;
-        config.tg1Count = config.tg1_count;
-        config.tg2Count = config.tg2_count;
-        config.tg3Count = config.tg3_count;
-        config.tg4Count = config.tg4_count;
-
+        
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
         if (totalRequested === 0) {
             handleError("Request at least one serial.");
@@ -174,23 +209,90 @@
         worker.postMessage({ type: 'generate', payload: config });
     }
 
+    // --- UI UTILITY FUNCTIONS ---
+    async function copyToClipboard() {
+        const textarea = document.getElementById('output-yaml');
+        const copyText = document.getElementById('copy-text');
+        const originalText = copyText.textContent;
+        const yamlContent = textarea.value;
+
+        if (!yamlContent) {
+            alert("There is no YAML content to copy.");
+            return;
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(yamlContent);
+                copyText.textContent = "Copied!";
+            } catch (err) {
+                console.error('Asynchronous copy failed: ', err);
+                copyText.textContent = "Copy Failed";
+                alert("Could not copy text. Your browser might have blocked the request or the content is too large.");
+            } finally {
+                setTimeout(() => { copyText.textContent = originalText; }, 2000);
+            }
+        } else {
+            console.warn("Using fallback copy method. This may not work for very large amounts of text.");
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                copyText.textContent = "Copied (Fallback)";
+            } catch (err) {
+                console.error('Fallback copy failed: ', err);
+                copyText.textContent = "Error";
+            } finally {
+                setTimeout(() => { copyText.textContent = originalText; }, 2000);
+            }
+        }
+    }
+
+    function downloadYAML() {
+        const textarea = document.getElementById('output-yaml');
+        const yamlContent = textarea.value;
+        const downloadText = document.getElementById('download-text');
+        const originalText = downloadText.textContent;
+
+        if (!yamlContent) {
+            alert("There is no YAML content to download.");
+            return;
+        }
+
+        try {
+            const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", "generated_serials.yaml");
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
+            link.click();
+            
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            downloadText.textContent = "Downloaded!";
+        } catch (err) {
+            console.error('Could not initiate download: ', err);
+            downloadText.textContent = "Error";
+        } finally {
+            setTimeout(() => { downloadText.textContent = originalText; }, 2000);
+        }
+    }
+
     // --- PAGE LOAD ---
     window.onload = () => {
-        loadState(); // Load saved data OR set defaults
-
-        // Attach event listeners to all inputs to save on change
+        loadState();
         allInputIds.forEach(id => {
             const element = document.getElementById(id);
             if(element) {
-                // Use 'input' for instant saving on textareas/numbers, 'change' for selects
                 const eventType = element.tagName === 'SELECT' ? 'change' : 'input';
                 element.addEventListener(eventType, saveState);
             }
         });
     };
-
-    // --- UNCHANGED FUNCTIONS (Omitted for brevity) ---
-    worker.onmessage=function(e){const{type:a,payload:t}=e.data;switch(a){case"progress":updateProgress(t.processed,t.total);break;case"complete":finalizeGeneration(t.yaml,t.uniqueCount,t.totalRequested);break;case"warning":document.getElementById("status-message").textContent=`Warning: ${t}`;break;case"error":handleError(t.message)}};function updateProgress(e,t){const a=document.getElementById("progress-bar"),n=document.getElementById("progress-percent"),o=0<t?Math.min(100,Math.floor(e/t*100)):0;a.style.width=`${o}%`,n.textContent=`${o}%`,document.getElementById("status-message").textContent=`Generating... Processing ${e.toLocaleString()} of ${t.toLocaleString()} serials.`}function finalizeGeneration(e,t,a){document.getElementById("output-yaml").value=e,document.getElementById("status-message").textContent=`✅ Generation Complete! Wrote ${t.toLocaleString()} unique serials. (Requested: ${a.toLocaleString()}).`,document.getElementById("progress-container").classList.add("hidden"),document.getElementById("generate-btn").disabled=!1}function handleError(e){console.error("Worker Error:",e),document.getElementById("status-message").textContent=`❌ ERROR: ${e}`,document.getElementById("progress-container").classList.add("hidden"),document.getElementById("generate-btn").disabled=!1}async function copyToClipboard(){const e=document.getElementById("output-yaml"),t=document.getElementById("copy-text"),a=t.textContent,n=e.value;if(n){if(navigator.clipboard&&window.isSecureContext)try{await navigator.clipboard.writeText(n),t.textContent="Copied!"}catch(e){console.error("Asynchronous copy failed: ",e),t.textContent="Copy Failed",alert("Could not copy text.")}finally{setTimeout((()=>{t.textContent=a}),2e3)}else e.select(),setTimeout((()=>{t.textContent=a}),2e3)}}function downloadYAML(){const e=document.getElementById("output-yaml").value,t=document.getElementById("download-text"),a=t.textContent;if(!e)return void alert("There is no YAML content to download.");try{const n=new Blob([e],{type:"text/yaml;charset=utf-8;"}),o=URL.createObjectURL(n),d=document.createElement("a");d.setAttribute("href",o),d.setAttribute("download","generated_serials.yaml"),d.style.display="none",document.body.appendChild(d),d.click(),document.body.removeChild(d),URL.revokeObjectURL(o),t.textContent="Downloaded!"}catch(e){console.error("Could not initiate download: ",e),t.textContent="Error"}finally{setTimeout((()=>{t.textContent=a}),2e3)}};
 </script>
 
 </body>
