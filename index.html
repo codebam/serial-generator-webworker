@@ -3,160 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine (v5.0 - Final)</title>
+    <title>Serial Mutation Engine (v7.0 - Final)</title>
     <style>
-        /* --- GLOBAL STYLES & COLOR PALETTE --- */
-        :root {
-            --bg-deep-blue: #0d1117;
-            --bg-panel: #161b22;
-            --border-color: #30363d;
-            --text-primary: #c9d1d9;
-            --text-secondary: #8b949e;
-            --accent-orange: #f78166;
-            --accent-cyan: #79c0ff;
-            --accent-green: #56d364;
-            --accent-red: #ff7b72;
-            --accent-gray: #6e7681;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 2rem;
-            background-color: var(--bg-deep-blue);
-            color: var(--text-primary);
-        }
-
-        /* --- LAYOUT & RESPONSIVENESS --- */
-        .main-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 2rem;
-            width: 100%;
-            max-width: 1400px; /* Prevents stretching on ultrawide */
-            margin: 0 auto;
-        }
-
-        .controls, .output {
-            padding: 1.5rem;
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        /* --- TYPOGRAPHY --- */
-        h1 {
-            color: var(--accent-orange);
-            font-size: 2em;
-            text-align: center;
-            margin-bottom: 2rem;
-            letter-spacing: 1px;
-        }
-
-        h2 {
-            color: var(--accent-cyan);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.75rem;
-            margin: 0;
-        }
-
-        p {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-            margin: -1rem 0 0 0; /* Pulls description up under the heading */
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        /* --- FORM ELEMENTS --- */
-        .form-section {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        input, textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            box-sizing: border-box;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            background-color: var(--bg-deep-blue);
-            color: var(--text-primary);
-            font-family: "SF Mono", "Consolas", "Roboto Mono", monospace;
-            font-size: 14px;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.4);
-        }
-
-        .repo-textarea {
-            resize: none;
-            height: 70px;
-        }
-
-        #output-yaml {
-            min-height: 400px;
-            flex-grow: 1; /* Allows it to fill vertical space in the output panel */
-        }
-
-        .grid-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        /* --- BUTTONS & STATUS --- */
-        .button-bar {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        button {
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9em;
-            transition: all 0.2s;
-            flex-grow: 1;
-        }
-
+        :root { --bg-deep-blue: #0d1117; --bg-panel: #161b22; --border-color: #30363d; --text-primary: #c9d1d9; --text-secondary: #8b949e; --accent-orange: #f78166; --accent-cyan: #79c0ff; --accent-green: #56d364; --accent-red: #ff7b72; --accent-gray: #6e7681; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 2rem; background-color: var(--bg-deep-blue); color: var(--text-primary); }
+        .main-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 2rem; width: 100%; max-width: 1400px; margin: 0 auto; }
+        .controls, .output { padding: 1.5rem; background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 1.5rem; }
+        h1 { color: var(--accent-orange); font-size: 2em; text-align: center; margin-bottom: 2rem; letter-spacing: 1px; }
+        h2 { color: var(--accent-cyan); font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin: 0; }
+        p { color: var(--text-secondary); font-size: 0.9em; margin: -1rem 0 0 0; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-secondary); }
+        input, textarea, select { width: 100%; padding: 0.75rem; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-deep-blue); color: var(--text-primary); font-family: "SF Mono", "Consolas", "Roboto Mono", monospace; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        input[type="range"] { padding: 0; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.4); }
+        .repo-textarea { resize: none; height: 70px; }
+        #output-yaml { min-height: 400px; flex-grow: 1; }
+        .grid-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .button-bar { display: flex; gap: 1rem; margin-top: 1rem; }
+        button { padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s; flex-grow: 1; }
         #generate-btn { background-color: var(--accent-orange); color: var(--bg-deep-blue); border-color: var(--accent-orange); }
         #generate-btn:hover:not(:disabled) { background-color: #ff9a7f; }
         #generate-btn:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
-        
         #reset-btn { background-color: var(--accent-gray); color: var(--text-primary); }
         #reset-btn:hover { background-color: #8b949e; }
-        
-        .output-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
+        .output-actions { display: flex; gap: 0.5rem; }
         .output-actions button { flex-grow: 0; }
         #copy-btn { background-color: var(--accent-green); color: var(--bg-deep-blue); border-color: var(--accent-green); }
         #download-btn { background-color: var(--accent-cyan); color: var(--bg-deep-blue); border-color: var(--accent-cyan); }
-        
         .status-bar { padding: 0.75rem; background-color: #1c2128; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600; text-align: center; }
-        
         .progress-container { width: 100%; background-color: var(--bg-deep-blue); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
         .progress-bar { height: 24px; background-color: var(--accent-cyan); width: 0%; text-align: center; line-height: 24px; color: var(--bg-deep-blue); font-weight: 600; transition: width 0.3s; }
         .hidden { display: none; }
+        .slider-group { display: flex; align-items: center; gap: 1rem; }
+        .slider-group span { font-weight: 600; color: var(--accent-cyan); min-width: 4ch; text-align: right; }
     </style>
 </head>
 <body>
@@ -168,19 +47,11 @@
             
             <div class="form-section">
                 <h2>Item Mutation Target</h2>
-                <select id="item-type">
-                    <option value="class_mod" selected>Class Mod</option>
-                    <option value="shield">Shield</option>
-                    <option value="ordnance">Ordnance</option>
-                    <option value="enhancement">Enhancement</option>
-                    <option value="gun">Gun</option>
-                    <option value="repkit">Repkit</option>
-                </select>
+                <select id="item-type"><option value="class_mod" selected>Class Mod</option><option value="shield">Shield</option><option value="ordnance">Ordnance</option><option value="enhancement">Enhancement</option><option value="gun">Gun</option><option value="repkit">Repkit</option></select>
             </div>
             
             <div class="form-section">
-                <h2>📦 God Roll Repositories</h2>
-                <p>Selected type below is used for all evolutionary mutations (TG1-4).</p>
+                <h2>📦 God Roll Repositories</h2><p>Used for evolutionary mutations (TG1-4).</p>
                 <div class="grid-group">
                     <div class="form-group"><label for="class_mod_repo">Class Mod</label><textarea id="class_mod_repo" class="repo-textarea" placeholder="Paste complete serials..."></textarea></div>
                     <div class="form-group"><label for="shield_repo">Shield</label><textarea id="shield_repo" class="repo-textarea" placeholder="Paste complete serials..."></textarea></div>
@@ -197,11 +68,27 @@
             </div>
             
             <div class="form-section">
-                <h2>Final Tail Length Offsets (Relative to Base Seed)</h2>
+                <h2>Final Tail Length Offsets (Relative to Parents)</h2>
                 <div class="grid-group">
-                    <div class="form-group"><label for="min-tail">Min Offset</label><input type="number" id="min-tail" value="10"></div>
-                    <div class="form-group"><label for="max-tail">Max Offset</label><input type="number" id="max-tail" value="50"></div>
-                    <div class="form-group"><label for="target-tail">Target Offset</label><input type="number" id="target-tail" value="30"></div>
+                    <div class="form-group"><label for="min-tail-offset">Min Offset</label><input type="number" id="min-tail-offset" value="0"></div>
+                    <div class="form-group"><label for="max-tail-offset">Max Offset</label><input type="number" id="max-tail-offset" value="5"></div>
+                    <div class="form-group"><label for="target-tail-offset">Target Offset</label><input type="number" id="target-tail-offset" value="0"></div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>🧬 Mutation Configuration</h2>
+                <div class="grid-group">
+                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px; grid-column: 1 / -1;">
+                        <label for="protected-start-percent">Protected Start % (More is safer)</label>
+                        <div class="slider-group">
+                            <input type="range" id="protected-start-percent" value="90" min="0" max="100" step="5" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span id="protected-start-value">90%</span>
+                        </div>
+                    </div>
+                    <div class="form-group"><label for="min-chunk-size">Min Chunk Size</label><input type="number" id="min-chunk-size" value="3"></div>
+                    <div class="form-group"><label for="max-chunk-size">Max Chunk Size</label><input type="number" id="max-chunk-size" value="7"></div>
+                    <div class="form-group"><label for="target-chunk-size">Target Chunk Size</label><input type="number" id="target-chunk-size" value="5"></div>
                 </div>
             </div>
 
@@ -213,19 +100,6 @@
                     <div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div>
                     <div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div>
                     <div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h2>⚙️ Advanced Tuning</h2>
-                <div class="grid-group">
-                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px; grid-column: 1 / -1;">
-                        <label for="protected-end-length">Protected End Length (Chars from end of tail)</label>
-                        <input type="number" id="protected-end-length" value="5" min="2" max="25">
-                    </div>
-                    <div class="form-group"><label for="part-size">High-Value Part Size</label><input type="number" id="part-size" value="5" min="3" max="10"></div>
-                    <div class="form-group"><label for="legendary-chance">TG3 Stacking Chance (%)</label><input type="number" id="legendary-chance" value="30" min="0" max="100"></div>
-                    <div class="form-group" style="grid-column: 1 / -1;"><label for="gpu-batch-size">GPU Random Number Batch Size</label><input type="number" id="gpu-batch-size" value="250000" min="50000"></div>
                 </div>
             </div>
             
@@ -256,7 +130,6 @@
 
 <script>
     const worker = new Worker('generator.worker.js');
-
     worker.onmessage = function(e) { const { type, payload } = e.data; switch(type) { case 'progress': updateProgress(payload.processed, payload.total); break; case 'complete': finalizeGeneration(payload.yaml, payload.uniqueCount, payload.totalRequested); break; case 'warning': document.getElementById('status-message').textContent = `Warning: ${payload}`; break; case 'error': handleError(payload.message); break; } };
     function updateProgress(processed, total) { const progressBar = document.getElementById('progress-bar'); const percent = total > 0 ? Math.min(100, Math.floor((processed / total) * 100)) : 0; progressBar.style.width = `${percent}%`; progressBar.textContent = `${percent}%`; document.getElementById('status-message').textContent = `Generating... Processing ${processed.toLocaleString()} of ${total.toLocaleString()} serials.`; }
     function finalizeGeneration(yaml, uniqueCount, totalRequested) { document.getElementById('output-yaml').value = yaml; document.getElementById('status-message').textContent = `✅ Generation Complete! Wrote ${uniqueCount.toLocaleString()} unique serials. (Requested: ${totalRequested.toLocaleString()}).`; document.getElementById('progress-container').classList.add('hidden'); document.getElementById('generate-btn').disabled = false; }
@@ -264,18 +137,15 @@
 
     function startGeneration() {
         const btn = document.getElementById('generate-btn'); btn.disabled = true; document.getElementById('output-yaml').value = ""; document.getElementById('progress-container').classList.remove('hidden');
-        const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U"; const HEADER_RE = /^(@U[^!]*!)/;
-        const seedValue = document.getElementById('seed').value || DEFAULT_SEED; const match = seedValue.match(HEADER_RE);
-        const baseTailLength = match ? seedValue.substring(match[0].length).length : seedValue.substring(10).length;
-        const minOffset = parseInt(document.getElementById('min-tail').value); const maxOffset = parseInt(document.getElementById('max-tail').value); const targetOffset = parseInt(document.getElementById('target-tail').value);
-        const finalMinTail = Math.max(10, baseTailLength + minOffset); const finalMaxTail = Math.max(finalMinTail, baseTailLength + maxOffset); const finalTargetTail = Math.max(finalMinTail, baseTailLength + targetOffset);
         
         const config = {
-            seed: seedValue, itemType: document.getElementById('item-type').value, minTail: finalMinTail, maxTail: finalMaxTail, targetTail: finalTargetTail,
+            seed: document.getElementById('seed').value, itemType: document.getElementById('item-type').value,
             newCount: parseInt(document.getElementById('new-count').value), tg1Count: parseInt(document.getElementById('tg1-count').value), tg2Count: parseInt(document.getElementById('tg2-count').value), tg3Count: parseInt(document.getElementById('tg3-count').value), tg4Count: parseInt(document.getElementById('tg4-count').value),
             repositories: { class_mod: document.getElementById('class_mod_repo').value, shield: document.getElementById('shield_repo').value, enhancement: document.getElementById('enhancement_repo').value, gun: document.getElementById('gun_repo').value, ordnance: document.getElementById('ordnance_repo').value, repkit: document.getElementById('repkit_repo').value },
-            protectedLength: 12, protectedEndLength: parseInt(document.getElementById('protected-end-length').value), partSize: parseInt(document.getElementById('part-size').value), legendaryChance: parseInt(document.getElementById('legendary-chance').value),
-            progressChunkSize: 500, gpuBatchSize: parseInt(document.getElementById('gpu-batch-size').value)
+            minOffset: parseInt(document.getElementById('min-tail-offset').value), maxOffset: parseInt(document.getElementById('max-tail-offset').value), targetOffset: parseInt(document.getElementById('target-tail-offset').value),
+            protectedStartPercent: parseInt(document.getElementById('protected-start-percent').value),
+            minChunkSize: parseInt(document.getElementById('min-chunk-size').value), maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
+            gpuBatchSize: 250000
         };
         
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
@@ -294,16 +164,38 @@
         document.getElementById('item-type').value = 'class_mod';
         document.getElementById('seed').value = DEFAULT_SEED;
         document.getElementById('new-count').value = 10000; document.getElementById('tg1-count').value = 0; document.getElementById('tg2-count').value = 0; document.getElementById('tg3-count').value = 0; document.getElementById('tg4-count').value = 0;
-        document.getElementById('min-tail').value = 10; document.getElementById('max-tail').value = 50; document.getElementById('target-tail').value = 30;
-        document.getElementById('protected-end-length').value = 5; document.getElementById('part-size').value = 5; document.getElementById('legendary-chance').value = 30;
-        document.getElementById('gpu-batch-size').value = 250000;
+        
+        document.getElementById('min-tail-offset').value = 0;
+        document.getElementById('max-tail-offset').value = 5;
+        document.getElementById('target-tail-offset').value = 0;
+        document.getElementById('protected-start-percent').value = 90;
+        document.getElementById('protected-start-value').textContent = '90%';
+        
+        document.getElementById('min-chunk-size').value = 3;
+        document.getElementById('max-chunk-size').value = 7;
+        document.getElementById('target-chunk-size').value = 5;
+        
         document.getElementById('output-yaml').value = ""; document.getElementById('status-message').textContent = "Form reset to defaults. Ready to generate 10,000 NEW items.";
         document.getElementById('progress-container').classList.add('hidden'); document.getElementById('generate-btn').disabled = false;
         document.getElementById('progress-bar').style.width = '0%'; document.getElementById('progress-bar').textContent = '0%';
     }
     
     function resetFormWithConfirm() { if (confirm("Are you sure you want to reset all fields to their default values?")) { resetForm(); } }
-    window.onload = () => { if (document.getElementById('seed').value === '') { console.log("First visit detected. Setting form defaults."); resetForm(); } else { console.log("Browser has restored form state."); document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate."; } };
+    window.onload = () => {
+        const slider = document.getElementById('protected-start-percent');
+        const sliderValue = document.getElementById('protected-start-value');
+        if (slider && sliderValue) {
+             sliderValue.textContent = slider.value + '%';
+        }
+       
+        if (document.getElementById('seed').value === '') {
+            console.log("First visit detected. Setting form defaults.");
+            resetForm();
+        } else {
+            console.log("Browser has restored form state. No changes made.");
+            document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate.";
+        }
+    };
 </script>
 
 </body>
