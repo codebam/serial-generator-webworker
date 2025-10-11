@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with all functions correctly defined, including the dual-path "Chaotic" and "Evolutionary" logic.
+// Definitive version with Intelligent Mutation: Protected Base + Moving Window Crossover.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc";
@@ -24,10 +24,7 @@ async function setupWebGPU() {
     }
     try {
         const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) {
-            console.warn("No appropriate GPUAdapter found. Falling back.");
-            return null;
-        }
+        if (!adapter) { console.warn("No appropriate GPUAdapter found. Falling back."); return null; }
         const device = await adapter.requestDevice();
         gpuDevice = device;
         return device;
@@ -42,66 +39,42 @@ async function generateRandomNumbersOnGPU(count) {
     if (!gpuDevice) {
         console.log(`Generating ${count} random numbers using CPU (Math.random).`);
         randomBuffer = new Float32Array(count);
-        for (let i = 0; i < count; i++) {
-            randomBuffer[i] = Math.random();
-        }
+        for (let i = 0; i < count; i++) { randomBuffer[i] = Math.random(); }
         randomIndex = 0;
         return;
     }
-
     console.log(`Generating batch of ${count} random numbers using GPU.`);
     const shaderCode = `
         struct Uniforms { time_seed: f32, };
         struct Numbers { data: array<f32>, };
         @group(0) @binding(0) var<storage, read_write> outputBuffer: Numbers;
         @group(0) @binding(1) var<uniform> uniforms: Uniforms;
-
         fn pcg(seed_in: u32) -> u32 {
             var state = seed_in * 747796405u + 2891336453u;
             let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
             return (word >> 22u) ^ word;
         }
-
         @compute @workgroup_size(64)
         fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             let index = global_id.x;
             if (index >= u32(arrayLength(&outputBuffer.data))) { return; }
             let seed = u32(global_id.x) * 1664525u + u32(uniforms.time_seed);
             outputBuffer.data[index] = f32(pcg(seed)) / 4294967429.0;
-        }
-    `;
+        }`;
     const shaderModule = gpuDevice.createShaderModule({ code: shaderCode });
-    const pipeline = gpuDevice.createComputePipeline({
-        layout: 'auto',
-        compute: { module: shaderModule, entryPoint: 'main' }
-    });
+    const pipeline = gpuDevice.createComputePipeline({ layout: 'auto', compute: { module: shaderModule, entryPoint: 'main' }});
     const outputBufferSize = count * Float32Array.BYTES_PER_ELEMENT;
-    const outputGPUBuffer = gpuDevice.createBuffer({
-        size: outputBufferSize,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
-    });
-    const uniformBuffer = gpuDevice.createBuffer({
-        size: 4,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+    const outputGPUBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    const uniformBuffer = gpuDevice.createBuffer({ size: 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Float32Array([performance.now()]));
-    const bindGroup = gpuDevice.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: outputGPUBuffer } },
-            { binding: 1, resource: { buffer: uniformBuffer } }
-        ]
-    });
+    const bindGroup = gpuDevice.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: outputGPUBuffer } }, { binding: 1, resource: { buffer: uniformBuffer } }]});
     const commandEncoder = gpuDevice.createCommandEncoder();
     const passEncoder = commandEncoder.beginComputePass();
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.dispatchWorkgroups(Math.ceil(count / 64));
     passEncoder.end();
-    const stagingBuffer = gpuDevice.createBuffer({
-        size: outputBufferSize,
-        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-    });
+    const stagingBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
     commandEncoder.copyBufferToBuffer(outputGPUBuffer, 0, stagingBuffer, 0, outputBufferSize);
     gpuDevice.queue.submit([commandEncoder.finish()]);
     await stagingBuffer.mapAsync(GPUMapMode.READ);
@@ -114,7 +87,7 @@ async function generateRandomNumbersOnGPU(count) {
     randomIndex = 0;
 }
 
-// --- UTILITY AND MUTATION FUNCTIONS ---
+// --- UTILITY AND REFACTORED MUTATION FUNCTIONS ---
 function randomInt(min, max) { return Math.floor(getRandom() * (max - min + 1)) + min; }
 function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
@@ -145,40 +118,6 @@ function extractHighValueParts(repoTails, partSize) {
     return Array.from(highValueParts);
 }
 
-function performLegendaryStacking(tail, highValueParts) {
-    if (!highValueParts || highValueParts.length === 0) return tail;
-    const partToStack = randomChoice(highValueParts);
-    const stackCount = randomInt(2, 4);
-    const stackedString = partToStack.repeat(stackCount);
-    const injectionPoint = randomInt(Math.floor(tail.length * 0.4), Math.floor(tail.length * 0.6));
-    return tail.substring(0, injectionPoint) + stackedString + tail.substring(injectionPoint);
-}
-
-function performCrossoverMutation(tailA, tailB) {
-    if (!tailB || tailB.length < 20) return tailA;
-    const shorterLength = Math.min(tailA.length, tailB.length);
-    const splicePoint = randomInt(Math.floor(shorterLength * 0.3), Math.floor(shorterLength * 0.7));
-    return tailA.substring(0, splicePoint) + tailB.substring(splicePoint);
-}
-
-function generateTargetedMutation(baseTail, highValueParts, fallbackRepoTails) {
-    if (highValueParts && highValueParts.length > 0) {
-        let mutatedTail = baseTail;
-        const partsToReplace = randomInt(1, 3);
-        for (let i = 0; i < partsToReplace; i++) {
-            const partToInject = randomChoice(highValueParts);
-            const partLength = partToInject.length;
-            if (mutatedTail.length > partLength) {
-                const startPos = randomInt(0, mutatedTail.length - partLength);
-                mutatedTail = mutatedTail.slice(0, startPos) + partToInject + mutatedTail.slice(startPos + partLength);
-            }
-        }
-        return mutatedTail;
-    }
-    const partnerTail = randomChoice(fallbackRepoTails);
-    return performCrossoverMutation(baseTail, partnerTail);
-}
-
 function buildFragmentPool(tail, minLen = 3, maxLen = 8) {
     const fragments = new Set();
     if (!tail || tail.length < maxLen) return [''];
@@ -189,13 +128,41 @@ function buildFragmentPool(tail, minLen = 3, maxLen = 8) {
     return Array.from(fragments);
 }
 
-function generateChaoticMutation(fragmentPool, targetLength) {
-    if (!fragmentPool || fragmentPool.length === 0) return '';
-    let newTail = '';
-    while (newTail.length < targetLength) {
-        newTail += randomChoice(fragmentPool);
+// --- INTELLIGENT MUTATION ALGORITHMS v2.0 ---
+
+function generateChaoticMutation(baseTail, fragmentPool, targetLength, protectedLength) {
+    if (!fragmentPool || fragmentPool.length === 0) return baseTail;
+    const protectedPart = baseTail.substring(0, protectedLength);
+    const remainingLength = targetLength - protectedPart.length;
+    if (remainingLength <= 0) return protectedPart;
+    
+    let chaoticPart = '';
+    while (chaoticPart.length < remainingLength) {
+        chaoticPart += randomChoice(fragmentPool);
     }
-    return newTail.substring(0, targetLength);
+    return protectedPart + chaoticPart.substring(0, remainingLength);
+}
+
+function performSmartCrossover(baseTail, parentTail, protectedLength) {
+    if (!parentTail || parentTail.length < protectedLength + 10) return baseTail;
+
+    // Define the mutable "window" for both tails, respecting the protected base
+    const mutableStart = protectedLength;
+    const baseMutableLength = baseTail.length - mutableStart;
+    const parentMutableLength = parentTail.length - mutableStart;
+
+    // Determine a random chunk to grab from the parent's mutable window
+    const maxChunkSize = Math.min(baseMutableLength, parentMutableLength, 40); // Limit chunk size for stability
+    const chunkLength = randomInt(10, maxChunkSize);
+    const chunkStartInParent = randomInt(mutableStart, parentTail.length - chunkLength);
+    const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + chunkLength);
+
+    // Determine a random injection point in the base tail's mutable window
+    const injectionPoint = randomInt(mutableStart, baseTail.length - chunkLength);
+
+    // Perform the "transplant"
+    const newTail = baseTail.substring(0, injectionPoint) + chunk + baseTail.substring(injectionPoint + chunkLength);
+    return newTail;
 }
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
@@ -205,13 +172,11 @@ self.onmessage = async function(e) {
     const config = e.data.payload;
     
     try {
-        if (!gpuDevice) {
-            await setupWebGPU();
-        }
+        if (!gpuDevice) await setupWebGPU();
 
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
         if (totalRequested === 0) {
-            self.postMessage({ type: 'complete', payload: { yaml: 'No items requested.', uniqueCount: 0, totalRequested: 0 } });
+            self.postMessage({ type: 'complete', payload: { yaml: 'No items requested.', uniqueCount: 0, totalRequested: 0 }});
             return;
         }
 
@@ -222,8 +187,7 @@ self.onmessage = async function(e) {
         
         const baseFragmentPool = buildFragmentPool(baseTail);
         const legendaryStackingChance = config.legendaryChance / 100.0;
-        const selectedRepoTails = config.repositories[config.itemType]
-            .split(/[\s\n]+/g).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
+        const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
 
         if (selectedRepoTails.length === 0) {
             self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed for TG1-4 mutations.` });
@@ -231,23 +195,18 @@ self.onmessage = async function(e) {
         }
         const highValueParts = extractHighValueParts(selectedRepoTails, config.partSize);
         
-        if (highValueParts.length === 0 && config.tg4Count > 0) {
-            self.postMessage({ type: 'warning', payload: `No high-value parts in **${config.itemType}** repo. TG4 will use crossover.` });
-        }
-        
         const serialsToGenerate = [];
-        for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: "NEW", flag: TG_FLAGS["NEW"] });
-        for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: "TG1", flag: TG_FLAGS["TG1"] });
-        for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: "TG2", flag: TG_FLAGS["TG2"] });
-        for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: "TG3", flag: TG_FLAGS["TG3"] });
-        for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: "TG4", flag: TG_FLAGS["TG4"] });
+        for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: "NEW" });
+        for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: "TG1" });
+        for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: "TG2" });
+        for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: "TG3" });
+        for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: "TG4" });
         serialsToGenerate.sort(() => getRandom() - 0.5);
 
         const seenSerials = new Set();
         const generatedSerials = [];
 
         for (let i = 0; i < totalRequested; i++) {
-            
             if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) {
                 console.log("Random buffer low. Refilling...");
                 await generateRandomNumbersOnGPU(config.gpuBatchSize);
@@ -259,16 +218,21 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 let mutatedTail;
-
                 if (item.tg === "NEW") {
-                    mutatedTail = generateChaoticMutation(baseFragmentPool, config.targetTail);
+                    mutatedTail = generateChaoticMutation(baseTail, baseFragmentPool, config.targetTail, config.protectedLength);
                 } else {
-                    if (item.tg === "TG4") {
-                        mutatedTail = generateTargetedMutation(baseTail, highValueParts, selectedRepoTails);
-                    } else if (item.tg === "TG3" && getRandom() < legendaryStackingChance) {
-                        mutatedTail = performLegendaryStacking(baseTail, highValueParts);
-                    } else {
-                        mutatedTail = performCrossoverMutation(baseTail, randomChoice(selectedRepoTails));
+                    // All evolutionary paths now use the much safer Smart Crossover
+                    mutatedTail = performSmartCrossover(baseTail, randomChoice(selectedRepoTails), config.protectedLength);
+                    
+                    // TG4/TG3 can get additional mutations on top
+                    if (item.tg === "TG4" && highValueParts.length > 0) {
+                        const partToInject = randomChoice(highValueParts);
+                        const injectionPoint = randomInt(config.protectedLength, mutatedTail.length - partToInject.length);
+                        mutatedTail = mutatedTail.slice(0, injectionPoint) + partToInject + mutatedTail.slice(injectionPoint + partToInject.length);
+                    } else if (item.tg === "TG3" && getRandom() < legendaryStackingChance && highValueParts.length > 0) {
+                        const partToStack = randomChoice(highValueParts).repeat(randomInt(2, 3));
+                        const injectionPoint = randomInt(config.protectedLength, mutatedTail.length - partToStack.length);
+                        mutatedTail = mutatedTail.slice(0, injectionPoint) + partToStack + mutatedTail.slice(injectionPoint + partToStack.length);
                     }
                 }
 
@@ -281,9 +245,9 @@ self.onmessage = async function(e) {
 
             if (!seenSerials.has(serial)) {
                 seenSerials.add(serial);
-                const final_item_flag = (item.flag !== 0 || item.tg === "TG4") ? 1 : 0;
-                const final_state_flag = (item.tg === "TG4") ? TG_FLAGS["TG4"] : item.flag;
-                generatedSerials.push({ serial: serial, flag: final_item_flag, state_flag: final_state_flag, slot: generatedSerials.length });
+                const flagValue = TG_FLAGS[item.tg] || 0;
+                const final_item_flag = (flagValue !== 0) ? 1 : 0;
+                generatedSerials.push({ serial: serial, flag: final_item_flag, state_flag: flagValue, slot: generatedSerials.length });
             }
 
             if (i > 0 && i % config.progressChunkSize === 0) {
