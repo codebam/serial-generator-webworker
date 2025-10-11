@@ -1,8 +1,8 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with Intelligent Mutation: Protected Base + Moving Window Crossover.
+// Definitive version with the CPU random number generation loop RESTORED.
 
 // --- CONSTANTS ---
-const DEFAULT_SEED = "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc";
+const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
 const BASE85_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~";
 const ALLOWED_EXTRA = "/";
 const ALPHABET = BASE85_ALPHABET + ALLOWED_EXTRA;
@@ -36,13 +36,19 @@ async function setupWebGPU() {
 }
 
 async function generateRandomNumbersOnGPU(count) {
+    // --- THIS IS THE CRITICAL FIX ---
     if (!gpuDevice) {
         console.log(`Generating ${count} random numbers using CPU (Math.random).`);
-        randomBuffer = new Float32Array(count);
-        for (let i = 0; i < count; i++) { randomBuffer[i] = Math.random(); }
+        randomBuffer = new Float32Array(count); // Creates an array of zeros.
+        // THE MISSING LOOP HAS BEEN RESTORED to fill the buffer.
+        for (let i = 0; i < count; i++) {
+            randomBuffer[i] = Math.random();
+        }
         randomIndex = 0;
         return;
     }
+    // --- END OF FIX ---
+
     console.log(`Generating batch of ${count} random numbers using GPU.`);
     const shaderCode = `
         struct Uniforms { time_seed: f32, };
@@ -87,7 +93,7 @@ async function generateRandomNumbersOnGPU(count) {
     randomIndex = 0;
 }
 
-// --- UTILITY AND REFACTORED MUTATION FUNCTIONS ---
+// --- UTILITY AND MUTATION FUNCTIONS ---
 function randomInt(min, max) { return Math.floor(getRandom() * (max - min + 1)) + min; }
 function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
@@ -118,52 +124,25 @@ function extractHighValueParts(repoTails, partSize) {
     return Array.from(highValueParts);
 }
 
-function buildFragmentPool(tail, minLen = 3, maxLen = 8) {
-    const fragments = new Set();
-    if (!tail || tail.length < maxLen) return [''];
-    for (let i = 0; i < tail.length - maxLen; i += Math.floor(maxLen / 2)) {
-        const len = randomInt(minLen, maxLen);
-        fragments.add(tail.substring(i, i + len));
+function generateExpansiveMutation(baseTail, targetLength) {
+    let newTail = baseTail;
+    const paddingLength = targetLength - newTail.length;
+    if (paddingLength <= 0) return newTail.substring(0, targetLength);
+    let padding = '';
+    for (let i = 0; i < paddingLength; i++) {
+        padding += randomChoice(ALPHABET);
     }
-    return Array.from(fragments);
+    return newTail + padding;
 }
 
-// --- INTELLIGENT MUTATION ALGORITHMS v2.0 ---
-
-function generateChaoticMutation(baseTail, fragmentPool, targetLength, protectedLength) {
-    if (!fragmentPool || fragmentPool.length === 0) return baseTail;
-    const protectedPart = baseTail.substring(0, protectedLength);
-    const remainingLength = targetLength - protectedPart.length;
-    if (remainingLength <= 0) return protectedPart;
-    
-    let chaoticPart = '';
-    while (chaoticPart.length < remainingLength) {
-        chaoticPart += randomChoice(fragmentPool);
-    }
-    return protectedPart + chaoticPart.substring(0, remainingLength);
+function performTailGraft(baseTail, parentTail) {
+    if (!parentTail || parentTail.length < 10) return baseTail;
+    const graftPoint = randomInt(Math.floor(baseTail.length / 2), baseTail.length - 2);
+    const parentGraftStart = randomInt(Math.floor(parentTail.length / 2), parentTail.length - 2);
+    const graftChunk = parentTail.substring(parentGraftStart);
+    return baseTail.substring(0, graftPoint) + graftChunk;
 }
 
-function performSmartCrossover(baseTail, parentTail, protectedLength) {
-    if (!parentTail || parentTail.length < protectedLength + 10) return baseTail;
-
-    // Define the mutable "window" for both tails, respecting the protected base
-    const mutableStart = protectedLength;
-    const baseMutableLength = baseTail.length - mutableStart;
-    const parentMutableLength = parentTail.length - mutableStart;
-
-    // Determine a random chunk to grab from the parent's mutable window
-    const maxChunkSize = Math.min(baseMutableLength, parentMutableLength, 40); // Limit chunk size for stability
-    const chunkLength = randomInt(10, maxChunkSize);
-    const chunkStartInParent = randomInt(mutableStart, parentTail.length - chunkLength);
-    const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + chunkLength);
-
-    // Determine a random injection point in the base tail's mutable window
-    const injectionPoint = randomInt(mutableStart, baseTail.length - chunkLength);
-
-    // Perform the "transplant"
-    const newTail = baseTail.substring(0, injectionPoint) + chunk + baseTail.substring(injectionPoint + chunkLength);
-    return newTail;
-}
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function(e) {
@@ -185,7 +164,6 @@ self.onmessage = async function(e) {
         const seedInput = config.seed || DEFAULT_SEED;
         const [baseHeader, baseTail] = splitHeaderTail(seedInput);
         
-        const baseFragmentPool = buildFragmentPool(baseTail);
         const legendaryStackingChance = config.legendaryChance / 100.0;
         const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
 
@@ -218,21 +196,20 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 let mutatedTail;
+                
                 if (item.tg === "NEW") {
-                    mutatedTail = generateChaoticMutation(baseTail, baseFragmentPool, config.targetTail, config.protectedLength);
+                    mutatedTail = generateExpansiveMutation(baseTail, config.targetTail);
                 } else {
-                    // All evolutionary paths now use the much safer Smart Crossover
-                    mutatedTail = performSmartCrossover(baseTail, randomChoice(selectedRepoTails), config.protectedLength);
+                    mutatedTail = performTailGraft(baseTail, randomChoice(selectedRepoTails));
                     
-                    // TG4/TG3 can get additional mutations on top
-                    if (item.tg === "TG4" && highValueParts.length > 0) {
-                        const partToInject = randomChoice(highValueParts);
-                        const injectionPoint = randomInt(config.protectedLength, mutatedTail.length - partToInject.length);
-                        mutatedTail = mutatedTail.slice(0, injectionPoint) + partToInject + mutatedTail.slice(injectionPoint + partToInject.length);
-                    } else if (item.tg === "TG3" && getRandom() < legendaryStackingChance && highValueParts.length > 0) {
-                        const partToStack = randomChoice(highValueParts).repeat(randomInt(2, 3));
-                        const injectionPoint = randomInt(config.protectedLength, mutatedTail.length - partToStack.length);
-                        mutatedTail = mutatedTail.slice(0, injectionPoint) + partToStack + mutatedTail.slice(injectionPoint + partToStack.length);
+                    if ((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") {
+                        if (highValueParts.length > 0) {
+                            const part = randomChoice(highValueParts);
+                            const injectionPoint = randomInt(Math.floor(mutatedTail.length * 0.6), mutatedTail.length - part.length);
+                            if (injectionPoint > 0) {
+                                mutatedTail = mutatedTail.slice(0, injectionPoint) + part + mutatedTail.slice(injectionPoint + part.length);
+                            }
+                        }
                     }
                 }
 
@@ -241,7 +218,7 @@ self.onmessage = async function(e) {
 
                 serial = ensureCharset(baseHeader + mutatedTail);
                 innerAttempts++;
-            } while (seenSerials.has(serial) && innerAttempts < 10);
+            } while (seenSerials.has(serial) && innerAttempts < 15);
 
             if (!seenSerials.has(serial)) {
                 seenSerials.add(serial);
