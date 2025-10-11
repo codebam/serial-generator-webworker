@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with a single, intelligent AUTO-DETECTING MOVING WINDOW mutation algorithm.
+// Definitive version with "High-Value Part" stacking correctly re-integrated.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -23,38 +23,11 @@ function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Ma
 function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; const hdr = serial.substring(0, 10); return [hdr, serial.substring(10)]; }
+function extractHighValueParts(repoTails, partSize) { const highValueParts = new Set(); const frequencyMap = new Map(); for (const tail of repoTails) { for (let i = 0; i <= tail.length - (partSize * 2); i++) { const fragment1 = tail.substring(i, i + partSize); const fragment2 = tail.substring(i + partSize, i + (partSize * 2)); if (fragment1 === fragment2) highValueParts.add(fragment1); } for (let i = 0; i <= tail.length - partSize; i++) { const fragment = tail.substring(i, i + partSize); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } const sortedByFrequency = [...frequencyMap.entries()].sort((a, b) => b[1] - a[1]); sortedByFrequency.slice(0, 20).forEach(entry => highValueParts.add(entry[0])); return Array.from(highValueParts); }
 
-// --- INTELLIGENT MUTATION ALGORITHM v15.0 ---
-function getLongestCommonPrefixLength(str1, str2) {
-    let i = 0;
-    while(i < str1.length && i < str2.length && str1[i] === str2[i]) { i++; }
-    return Math.max(5, i); // Return a safe minimum
-}
-
-function performHybridMutation(baseTail, parentTail, finalLength, minChunk, maxChunk, targetChunk, isNew) {
-    const protectedStartLength = isNew ? Math.floor(baseTail.length / 2) : getLongestCommonPrefixLength(baseTail, parentTail);
-    const startPart = baseTail.substring(0, protectedStartLength);
-    
-    const fillLength = finalLength - startPart.length;
-    if (fillLength <= 0) return startPart.substring(0, finalLength);
-    
-    let fillPart = '';
-    for (let i = 0; i < fillLength; i++) { fillPart += randomChoice(ALPHABET); }
-
-    if (!isNew && parentTail) {
-        const parentMutableStart = protectedStartLength;
-        const parentMutableLength = parentTail.length - parentMutableStart;
-        const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk, fillLength));
-
-        if (parentMutableLength > finalChunkSize && fillLength > finalChunkSize) {
-            const chunkStartInParent = randomInt(parentMutableStart, parentTail.length - finalChunkSize);
-            const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
-            const injectionPoint = randomInt(0, fillLength - chunk.length);
-            fillPart = fillPart.slice(0, injectionPoint) + chunk + fillPart.slice(injectionPoint + chunk.length);
-        }
-    }
-    return startPart + fillPart;
-}
+// --- INTELLIGENT MUTATION ALGORITHMS v15.0 ---
+function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) { return startPart.substring(0, finalLength); } let padding = ''; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } return startPart + padding; }
+function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; const paddingLength = finalLength - childTail.length; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function(e) {
@@ -71,6 +44,9 @@ self.onmessage = async function(e) {
         const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
         if (selectedRepoTails.length === 0) { self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed as parent.` }); selectedRepoTails.push(baseTail); }
         
+        const highValueParts = extractHighValueParts(selectedRepoTails, config.partSize);
+        const legendaryStackingChance = config.legendaryChance / 100.0;
+
         const serialsToGenerate = [];
         for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: "NEW" });
         for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: "TG1" });
@@ -88,8 +64,9 @@ self.onmessage = async function(e) {
             let serial = '';
             let innerAttempts = 0;
             do {
-                const isNew = item.tg === "NEW";
-                const parentTail = isNew ? baseTail : randomChoice(selectedRepoTails);
+                const parentTail = randomChoice(selectedRepoTails);
+                const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
+                const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
                 
                 const averageLength = (baseTail.length + parentTail.length) / 2;
                 const finalMin = averageLength + config.minOffset;
@@ -97,15 +74,25 @@ self.onmessage = async function(e) {
                 const finalTarget = averageLength + config.targetOffset;
                 const dynamicTargetLength = Math.floor(Math.max(finalMin, Math.min(finalMax, finalTarget)));
 
-                const mutatedTail = performHybridMutation(
-                    baseTail, 
-                    parentTail,
-                    dynamicTargetLength,
-                    config.minChunkSize, 
-                    config.maxChunkSize, 
-                    config.targetChunkSize,
-                    isNew
-                );
+                let mutatedTail;
+                const mutableZone = baseTail.length - protectedStartLength;
+
+                if (item.tg === "NEW" || mutableZone < config.minChunkSize) {
+                    mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+                } else {
+                    mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
+                }
+                
+                // --- STACKING FEATURE RE-INTEGRATED ---
+                if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
+                    const part = randomChoice(highValueParts);
+                    const mutableStart = protectedStartLength;
+                    const mutableEnd = mutatedTail.length - 5; // Keep a small buffer at the very end
+                    if (mutableEnd > mutableStart && (mutableEnd - mutableStart) > part.length) {
+                        const injectionPoint = randomInt(mutableStart, mutableEnd - part.length);
+                        mutatedTail = mutatedTail.slice(0, injectionPoint) + part + mutatedTail.slice(injectionPoint + part.length);
+                    }
+                }
                 
                 serial = ensureCharset(baseHeader + mutatedTail);
                 innerAttempts++;
