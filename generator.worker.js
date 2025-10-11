@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with an INTELLIGENT FALLBACK. It prioritizes crossover and falls back to append.
+// Definitive version with the corrected PROTECTED START calculation and robust mutation logic.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -25,7 +25,7 @@ function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; const hdr = serial.substring(0, 10); return [hdr, serial.substring(10)]; }
 function extractHighValueParts(repoTails, partSize) { const highValueParts = new Set(); const frequencyMap = new Map(); for (const tail of repoTails) { for (let i = 0; i <= tail.length - (partSize * 2); i++) { const fragment1 = tail.substring(i, i + partSize); const fragment2 = tail.substring(i + partSize, i + (partSize * 2)); if (fragment1 === fragment2) highValueParts.add(fragment1); } for (let i = 0; i <= tail.length - partSize; i++) { const fragment = tail.substring(i, i + partSize); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } const sortedByFrequency = [...frequencyMap.entries()].sort((a, b) => b[1] - a[1]); sortedByFrequency.slice(0, 20).forEach(entry => highValueParts.add(entry[0])); return Array.from(highValueParts); }
 
-// --- INTELLIGENT MUTATION ALGORITHMS v15.1 ---
+// --- INTELLIGENT MUTATION ALGORITHMS v16.0 ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) { return startPart.substring(0, finalLength); } let padding = ''; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } return startPart + padding; }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; const paddingLength = finalLength - childTail.length; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
 
@@ -71,23 +71,16 @@ self.onmessage = async function(e) {
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
                 
-                // --- THIS IS THE SECOND CRITICAL FIX ---
                 // The dynamic length is now correctly calculated based on the BASE seed, not the average.
                 const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
                 
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
 
-                if (item.tg === "NEW") {
+                if (item.tg === "NEW" || mutableZone < config.minChunkSize) {
                     mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
                 } else {
-                    if (mutableZone < config.minChunkSize) {
-                        // The FALLBACK now correctly uses the REPO PARENT as the base.
-                        mutatedTail = generateAppendMutation(parentTail, dynamicTargetLength, Math.floor(parentTail.length * (protectedStartPercent / 100)));
-                    } else {
-                        // The GOLDEN path.
-                        mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
-                    }
+                    mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
                 }
                 
                 if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
