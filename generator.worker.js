@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with a corrected genetic fallback path.
+// Definitive version with an INTELLIGENT FALLBACK. It prioritizes crossover and falls back to append.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -65,30 +65,27 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 const parentTail = randomChoice(selectedRepoTails);
+                
+                // --- THIS IS THE CRITICAL FIX ---
+                // The protected length is NOW and FOREVER based on the BASE tail's length.
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
                 
-                const averageLength = (baseTail.length + parentTail.length) / 2;
-                const finalMin = averageLength + config.minOffset;
-                const finalMax = averageLength + config.maxOffset;
-                const finalTarget = averageLength + config.targetOffset;
-                const dynamicTargetLength = Math.floor(Math.max(finalMin, Math.min(finalMax, finalTarget)));
-
+                // --- THIS IS THE SECOND CRITICAL FIX ---
+                // The dynamic length is now correctly calculated based on the BASE seed, not the average.
+                const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+                
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
 
-                // --- THIS IS THE CRITICAL FIX ---
                 if (item.tg === "NEW") {
-                    // NEW items ONLY use the base seed. This is correct.
                     mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
                 } else {
-                    // ALL TG1-4 items use this path.
                     if (mutableZone < config.minChunkSize) {
-                        // The FALLBACK path. The transplant is impossible.
-                        // It now correctly uses the REPO PARENT as the base for the append.
-                        mutatedTail = generateAppendMutation(parentTail, dynamicTargetLength, protectedStartLength);
+                        // The FALLBACK now correctly uses the REPO PARENT as the base.
+                        mutatedTail = generateAppendMutation(parentTail, dynamicTargetLength, Math.floor(parentTail.length * (protectedStartPercent / 100)));
                     } else {
-                        // The GOLDEN path. The transplant is possible.
+                        // The GOLDEN path.
                         mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
                     }
                 }
