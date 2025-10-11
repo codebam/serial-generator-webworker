@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine (v7.0 - Final)</title>
+    <title>Serial Mutation Engine (v8.0 - True Dynamic Window)</title>
     <style>
         :root { --bg-deep-blue: #0d1117; --bg-panel: #161b22; --border-color: #30363d; --text-primary: #c9d1d9; --text-secondary: #8b949e; --accent-orange: #f78166; --accent-cyan: #79c0ff; --accent-green: #56d364; --accent-red: #ff7b72; --accent-gray: #6e7681; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 2rem; background-color: var(--bg-deep-blue); color: var(--text-primary); }
@@ -34,8 +34,6 @@
         .progress-container { width: 100%; background-color: var(--bg-deep-blue); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
         .progress-bar { height: 24px; background-color: var(--accent-cyan); width: 0%; text-align: center; line-height: 24px; color: var(--bg-deep-blue); font-weight: 600; transition: width 0.3s; }
         .hidden { display: none; }
-        .slider-group { display: flex; align-items: center; gap: 1rem; }
-        .slider-group span { font-weight: 600; color: var(--accent-cyan); min-width: 4ch; text-align: right; }
     </style>
 </head>
 <body>
@@ -79,12 +77,13 @@
             <div class="form-section">
                 <h2>🧬 Mutation Configuration</h2>
                 <div class="grid-group">
-                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px; grid-column: 1 / -1;">
-                        <label for="protected-start-percent">Protected Start % (More is safer)</label>
-                        <div class="slider-group">
-                            <input type="range" id="protected-start-percent" value="90" min="0" max="100" step="5" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                            <span id="protected-start-value">90%</span>
-                        </div>
+                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px;">
+                        <label for="min-protected-percent">Min Protected Start %</label>
+                        <input type="number" id="min-protected-percent" value="90" min="0" max="100">
+                    </div>
+                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px;">
+                        <label for="max-protected-percent">Max Protected Start %</label>
+                        <input type="number" id="max-protected-percent" value="95" min="0" max="100">
                     </div>
                     <div class="form-group"><label for="min-chunk-size">Min Chunk Size</label><input type="number" id="min-chunk-size" value="3"></div>
                     <div class="form-group"><label for="max-chunk-size">Max Chunk Size</label><input type="number" id="max-chunk-size" value="7"></div>
@@ -143,7 +142,7 @@
             newCount: parseInt(document.getElementById('new-count').value), tg1Count: parseInt(document.getElementById('tg1-count').value), tg2Count: parseInt(document.getElementById('tg2-count').value), tg3Count: parseInt(document.getElementById('tg3-count').value), tg4Count: parseInt(document.getElementById('tg4-count').value),
             repositories: { class_mod: document.getElementById('class_mod_repo').value, shield: document.getElementById('shield_repo').value, enhancement: document.getElementById('enhancement_repo').value, gun: document.getElementById('gun_repo').value, ordnance: document.getElementById('ordnance_repo').value, repkit: document.getElementById('repkit_repo').value },
             minOffset: parseInt(document.getElementById('min-tail-offset').value), maxOffset: parseInt(document.getElementById('max-tail-offset').value), targetOffset: parseInt(document.getElementById('target-tail-offset').value),
-            protectedStartPercent: parseInt(document.getElementById('protected-start-percent').value),
+            minProtectedPercent: parseInt(document.getElementById('min-protected-percent').value), maxProtectedPercent: parseInt(document.getElementById('max-protected-percent').value),
             minChunkSize: parseInt(document.getElementById('min-chunk-size').value), maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
             gpuBatchSize: 250000
         };
@@ -164,38 +163,16 @@
         document.getElementById('item-type').value = 'class_mod';
         document.getElementById('seed').value = DEFAULT_SEED;
         document.getElementById('new-count').value = 10000; document.getElementById('tg1-count').value = 0; document.getElementById('tg2-count').value = 0; document.getElementById('tg3-count').value = 0; document.getElementById('tg4-count').value = 0;
-        
-        document.getElementById('min-tail-offset').value = 0;
-        document.getElementById('max-tail-offset').value = 5;
-        document.getElementById('target-tail-offset').value = 0;
-        document.getElementById('protected-start-percent').value = 90;
-        document.getElementById('protected-start-value').textContent = '90%';
-        
-        document.getElementById('min-chunk-size').value = 3;
-        document.getElementById('max-chunk-size').value = 7;
-        document.getElementById('target-chunk-size').value = 5;
-        
+        document.getElementById('min-tail-offset').value = 0; document.getElementById('max-tail-offset').value = 5; document.getElementById('target-tail-offset').value = 0;
+        document.getElementById('min-protected-percent').value = 90; document.getElementById('max-protected-percent').value = 95;
+        document.getElementById('min-chunk-size').value = 3; document.getElementById('max-chunk-size').value = 7; document.getElementById('target-chunk-size').value = 5;
         document.getElementById('output-yaml').value = ""; document.getElementById('status-message').textContent = "Form reset to defaults. Ready to generate 10,000 NEW items.";
         document.getElementById('progress-container').classList.add('hidden'); document.getElementById('generate-btn').disabled = false;
         document.getElementById('progress-bar').style.width = '0%'; document.getElementById('progress-bar').textContent = '0%';
     }
     
     function resetFormWithConfirm() { if (confirm("Are you sure you want to reset all fields to their default values?")) { resetForm(); } }
-    window.onload = () => {
-        const slider = document.getElementById('protected-start-percent');
-        const sliderValue = document.getElementById('protected-start-value');
-        if (slider && sliderValue) {
-             sliderValue.textContent = slider.value + '%';
-        }
-       
-        if (document.getElementById('seed').value === '') {
-            console.log("First visit detected. Setting form defaults.");
-            resetForm();
-        } else {
-            console.log("Browser has restored form state. No changes made.");
-            document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate.";
-        }
-    };
+    window.onload = () => { if (document.getElementById('seed').value === '') { console.log("First visit detected. Setting form defaults."); resetForm(); } else { console.log("Browser has restored form state."); document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate."; } };
 </script>
 
 </body>
