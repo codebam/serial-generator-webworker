@@ -33,6 +33,8 @@ function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; return [serial.substring(0, 10), serial.substring(10)]; }
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) { const frequencyMap = new Map(); for (let size = minPartSize; size <= maxPartSize; size++) { for (const tail of repoTails) { if (tail.length < size) continue; for (let i = 0; i <= tail.length - size; i++) { const fragment = tail.substring(i, i + size); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } } const repeatedParts = [...frequencyMap.entries()].filter(([, count]) => count > 1).sort((a, b) => (b[1] !== a[1]) ? b[1] - a[1] : b[0].length - a[0].length); return repeatedParts.map(entry => entry[0]); }
 
+function extractLegendaryPerks(tail) { if (!tail || tail.length < 10) return null; const middleStart = Math.floor(tail.length * 0.25); const middleEnd = Math.floor(tail.length * 0.75); const perkLength = Math.floor(tail.length * 0.1) + 5; const start = randomInt(middleStart, middleEnd - perkLength); return tail.substring(start, start + perkLength); }
+
 // --- INTELLIGENT MUTATION ALGORITHMS ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) return startPart.substring(0, finalLength); let padding = ''; for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET); return startPart + padding; }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; for (let i = 0; i < finalLength - childTail.length; i++) padding += randomChoice(ALPHABET); childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
@@ -56,6 +58,13 @@ self.onmessage = async function(e) {
         if (selectedRepoTails.length === 0) { self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed as parent.` }); selectedRepoTails.push(baseTail); }
         const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
         const legendaryStackingChance = config.legendaryChance / 100.0;
+        const legendaryPerkChance = config.legendaryPerkChance / 100.0;
+
+        let legendaryPerk = null;
+        if (config.legendaryPerkSource) {
+            const [, legendaryTail] = splitHeaderTail(config.legendaryPerkSource);
+            legendaryPerk = extractLegendaryPerks(legendaryTail);
+        }
 
         const serialsToGenerate = [];
         for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: "NEW" });
@@ -106,6 +115,12 @@ self.onmessage = async function(e) {
                             mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
                         }
                     }
+                }
+
+                // --- NEW LEGENDARY PERK INJECTION ---
+                if (legendaryPerk && getRandom() < legendaryPerkChance) {
+                    const injectionPoint = randomInt(protectedStartLength, dynamicTargetLength - legendaryPerk.length);
+                    mutatedTail = mutatedTail.slice(0, injectionPoint) + legendaryPerk + mutatedTail.slice(injectionPoint + legendaryPerk.length);
                 }
                 
                 serial = ensureCharset(baseHeader + mutatedTail);

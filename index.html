@@ -85,7 +85,8 @@
                     targetChunk: 5,
                     minPart: 4, 
                     maxPart: 8, 
-                    legendaryChance: 100
+                    legendaryChance: 100,
+                    legendaryPerkChance: 50
                 }
             };
             
@@ -99,6 +100,7 @@
             const [progress, setProgress] = useState(0);
             const [isGenerating, setIsGenerating] = useState(false);
             const [outputYaml, setOutputYaml] = useState("");
+            const [legendaryPerkSource, setLegendaryPerkSource] = useState(null);
             
             const workerRef = useRef(null);
 
@@ -158,6 +160,8 @@
                     minPartSize: parseInt(state.rules.minPart),
                     maxPartSize: parseInt(state.rules.maxPart),
                     legendaryChance: parseInt(state.rules.legendaryChance),
+                    legendaryPerkChance: parseInt(state.rules.legendaryPerkChance),
+                    legendaryPerkSource: legendaryPerkSource,
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -181,6 +185,24 @@
                 link.click();
                 URL.revokeObjectURL(link.href);
             };
+
+            const parsedSerials = React.useMemo(() => {
+                if (!outputYaml) return [];
+                try {
+                    const lines = outputYaml.split('\n');
+                    const serials = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].trim().startsWith('serial:')) {
+                            const serial = lines[i].trim().substring(8).trim().replace(/'/g, '');
+                            serials.push(serial);
+                        }
+                    }
+                    return serials;
+                } catch (e) {
+                    console.error("Error parsing YAML:", e);
+                    return [];
+                }
+            }, [outputYaml]);
 
             const inputClasses = "w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm";
             const btnClasses = {
@@ -230,6 +252,9 @@
                                 <FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
                                     <input type="range" name="rules.legendaryChance" min="0" max="100" value={state.rules.legendaryChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
                                 </FormGroup>
+                                <FormGroup label={`Legendary Perk Chance (${state.rules.legendaryPerkChance}%)`}>
+                                    <input type="range" name="rules.legendaryPerkChance" min="0" max="100" value={state.rules.legendaryPerkChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                </FormGroup>
                                 <FormGroup label="High-Value Part Size Range">
                                     <div className="grid grid-cols-2 gap-4">
                                         <input type="number" name="rules.minPart" value={state.rules.minPart} onChange={handleInputChange} className={inputClasses} />
@@ -273,7 +298,16 @@
                                     <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
                                 </div>
                              </div>
-                             <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>
+                             <div className="flex-grow overflow-y-auto bg-gray-900 p-4 rounded-b-lg">
+                                <div className="flex flex-col gap-2">
+                                    {parsedSerials.map((serial, index) => (
+                                        <div key={index} className={`flex items-center justify-between p-2 rounded-md ${legendaryPerkSource === serial ? 'bg-blue-900/50' : 'bg-gray-800'}`}>
+                                            <span className="font-mono text-sm text-gray-300">{serial}</span>
+                                            <button onClick={() => setLegendaryPerkSource(serial)} className={btnClasses.tertiary}>Perk</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </main>
                 </div>
