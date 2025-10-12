@@ -60,10 +60,12 @@ self.onmessage = async function(e) {
         const legendaryStackingChance = config.legendaryChance / 100.0;
         const legendaryPerkChance = config.legendaryPerkChance / 100.0;
 
+        const legendaryPerkRepoTails = (config.legendaryPerkRepo || '').split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
+
         let legendaryPerk = null;
-        if (config.legendaryPerkSource) {
-            const [, legendaryTail] = splitHeaderTail(config.legendaryPerkSource);
-            legendaryPerk = extractLegendaryPerks(legendaryTail);
+        if (legendaryPerkRepoTails.length > 0) {
+            const randomPerkTail = randomChoice(legendaryPerkRepoTails);
+            legendaryPerk = extractLegendaryPerks(randomPerkTail);
         }
 
         const serialsToGenerate = [];
