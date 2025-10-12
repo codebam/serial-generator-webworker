@@ -87,14 +87,26 @@ self.onmessage = async function(e) {
                 
                 if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
                     const part = randomChoice(highValueParts);
-                    const mutableStart = protectedStartLength;
-                    const mutableEnd = mutatedTail.length - 5; 
-                    if (mutableEnd > mutableStart && (mutableEnd - mutableStart) > part.length) {
-                        const injectionPoint = randomInt(mutableStart, mutableEnd - part.length);
-                        mutatedTail = mutatedTail.slice(0, injectionPoint) + part + mutatedTail.slice(injectionPoint + part.length);
+                    const repetitions = randomInt(2, 5); // Repeat the part 2 to 5 times for a strong pattern.
+                    const repeatedBlock = part.repeat(repetitions);
+
+                    // Calculate the total space available for mutation after the protected prefix.
+                    const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+
+                    // Only proceed if there's enough space for at least one instance of the part.
+                    if (availableMutableSpace > part.length) {
+                        // Truncate the repeated block if it's longer than the available mutable space.
+                        const finalRepeatedBlock = repeatedBlock.substring(0, availableMutableSpace);
+
+                        // Determine the length of the original part of the tail that we will keep.
+                        const prefixLength = dynamicTargetLength - finalRepeatedBlock.length;
+
+                        // Construct the new tail by taking the prefix and appending the repeating block.
+                        // This effectively overwrites the end of the original mutated tail.
+                        mutatedTail = mutatedTail.substring(0, prefixLength) + finalRepeatedBlock;
                     }
                 }
-                
+
                 serial = ensureCharset(baseHeader + mutatedTail);
                 innerAttempts++;
             } while (seenSerials.has(serial) && innerAttempts < 20);
