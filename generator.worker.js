@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with multi-size pattern detection and robust mutation logic.
+// Classic logic restored within the Web Worker architecture.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -8,77 +8,90 @@ const ALLOWED_EXTRA = "/";
 const ALPHABET = BASE85_ALPHABET + ALLOWED_EXTRA;
 const HEADER_RE = /^(@U[^!]*!)/;
 const TG_FLAGS = { "NEW": 0, "TG1": 17, "TG2": 33, "TG3": 65, "TG4": 129 };
-const RANDOM_SAFETY_MARGIN = 2000;
 
-// --- GPU & RANDOMNESS STATE ---
-let gpuDevice = null;
-let randomBuffer;
-let randomIndex = 0;
-const getRandom = () => randomBuffer[randomIndex++];
-
-// --- WebGPU & UTILITY FUNCTIONS ---
-async function setupWebGPU() { if (typeof navigator === 'undefined' || !navigator.gpu) { console.warn("WebGPU not supported. Falling back to Math.random()."); return null; } try { const adapter = await navigator.gpu.requestAdapter(); if (!adapter) { console.warn("No appropriate GPUAdapter found. Falling back."); return null; } const device = await adapter.requestDevice(); gpuDevice = device; return device; } catch (error) { console.error("Failed to initialize WebGPU:", error); gpuDevice = null; return null; } }
-async function generateRandomNumbersOnGPU(count) { if (!gpuDevice) { console.log(`Generating ${count} random numbers using CPU.`); randomBuffer = new Float32Array(count); for (let i = 0; i < count; i++) { randomBuffer[i] = Math.random(); } randomIndex = 0; return; } console.log(`Generating batch of ${count} random numbers using GPU.`); const shaderCode = `struct Uniforms { time_seed: f32, }; struct Numbers { data: array<f32>, }; @group(0) @binding(0) var<storage, read_write> outputBuffer: Numbers; @group(0) @binding(1) var<uniform> uniforms: Uniforms; fn pcg(seed_in: u32) -> u32 { var state = seed_in * 747796405u + 2891336453u; let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u; return (word >> 22u) ^ word; } @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) global_id: vec3<u32>) { let index = global_id.x; if (index >= u32(arrayLength(&outputBuffer.data))) { return; } let seed = u32(global_id.x) * 1664525u + u32(uniforms.time_seed); outputBuffer.data[index] = f32(pcg(seed)) / 4294967429.0; }`; const shaderModule = gpuDevice.createShaderModule({ code: shaderCode }); const pipeline = gpuDevice.createComputePipeline({ layout: 'auto', compute: { module: shaderModule, entryPoint: 'main' }}); const outputBufferSize = count * Float32Array.BYTES_PER_ELEMENT; const outputGPUBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC }); const uniformBuffer = gpuDevice.createBuffer({ size: 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }); gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Float32Array([performance.now()])); const bindGroup = gpuDevice.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: outputGPUBuffer } }, { binding: 1, resource: { buffer: uniformBuffer } }]}); const commandEncoder = gpuDevice.createCommandEncoder(); const passEncoder = commandEncoder.beginComputePass(); passEncoder.setPipeline(pipeline); passEncoder.setBindGroup(0, bindGroup); passEncoder.dispatchWorkgroups(Math.ceil(count / 64)); passEncoder.end(); const stagingBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }); commandEncoder.copyBufferToBuffer(outputGPUBuffer, 0, stagingBuffer, 0, outputBufferSize); gpuDevice.queue.submit([commandEncoder.finish()]); await stagingBuffer.mapAsync(GPUMapMode.READ); const data = stagingBuffer.getMappedRange(); randomBuffer = new Float32Array(data.slice(0)); stagingBuffer.unmap(); outputGPUBuffer.destroy(); stagingBuffer.destroy(); uniformBuffer.destroy(); randomIndex = 0; }
-function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Math.floor(getRandom() * (max - min + 1)) + min; }
-function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
+// --- UTILITY FUNCTIONS ---
+function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randomChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
-function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; const hdr = serial.substring(0, 10); return [hdr, serial.substring(10)]; }
+function splitHeaderTail(serial) {
+    const match = serial.match(HEADER_RE);
+    return match ? [match[1], serial.substring(match[0].length)] : [serial.substring(0, 10), serial.substring(10)];
+}
 
-// --- THIS IS THE CORRECTED FUNCTION ---
-// It now scans for patterns across a RANGE of sizes, making it far more effective.
+// --- RESTORED: INTELLIGENT PART EXTRACTION ---
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
     const frequencyMap = new Map();
-
-    // Step 1: Scan for parts of various sizes within the specified range.
     for (let size = minPartSize; size <= maxPartSize; size++) {
         for (const tail of repoTails) {
-            if (tail.length < size) continue; // Skip tails shorter than the current part size
+            if (tail.length < size) continue;
             for (let i = 0; i <= tail.length - size; i++) {
                 const fragment = tail.substring(i, i + size);
                 frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
             }
         }
     }
-
-    // Step 2: Filter for parts that appeared more than once.
     const repeatedParts = [...frequencyMap.entries()]
         .filter(([part, count]) => count > 1)
-        .sort((a, b) => {
-            // Step 3: Sort results. Prioritize by frequency, then by length (longer is better).
-            if (b[1] !== a[1]) {
-                return b[1] - a[1]; // Higher frequency first
-            }
-            return b[0].length - a[0].length; // Longer part first
-        });
-
+        .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length);
     return repeatedParts.map(entry => entry[0]);
 }
 
+// --- RESTORED: CLASSIC MUTATION ALGORITHMS ---
+function generateAppendMutation(baseTail, finalLength, protectedStartLength) {
+    const startPart = baseTail.substring(0, protectedStartLength);
+    const paddingLength = finalLength - startPart.length;
+    if (paddingLength <= 0) return startPart.substring(0, finalLength);
+    let padding = '';
+    for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET);
+    return startPart + padding;
+}
 
-// --- INTELLIGENT MUTATION ALGORITHMS v17.0 ---
-function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) { return startPart.substring(0, finalLength); } let padding = ''; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } return startPart + padding; }
-function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; const paddingLength = finalLength - childTail.length; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
+function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) {
+    let childTail = baseTail;
+    const mutableStart = protectedStartLength;
+    const childMutableLength = childTail.length - mutableStart;
+    const parentMutableLength = parentTail.length - protectedStartLength;
+    const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk));
+    
+    if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) {
+        const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize);
+        const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
+        if (childTail.length > chunk.length) {
+            const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length);
+            childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length);
+        }
+    }
+    
+    if (childTail.length < finalLength) {
+        let padding = '';
+        const paddingLength = finalLength - childTail.length;
+        for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET);
+        childTail += padding;
+    } else {
+        childTail = childTail.substring(0, finalLength);
+    }
+    return childTail;
+}
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
-self.onmessage = async function(e) {
+self.onmessage = function(e) {
     if (e.data.type !== 'generate') return;
     const config = e.data.payload;
+
     try {
-        if (!gpuDevice) await setupWebGPU();
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
-        if (totalRequested === 0) { self.postMessage({ type: 'complete', payload: { yaml: 'No items requested.', uniqueCount: 0, totalRequested: 0 }}); return; }
-        await generateRandomNumbersOnGPU(config.gpuBatchSize);
-        const seedInput = config.seed || DEFAULT_SEED;
-        const [baseHeader, baseTail] = splitHeaderTail(seedInput);
-        const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
-        if (selectedRepoTails.length === 0) { self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed as parent.` }); selectedRepoTails.push(baseTail); }
+        if (totalRequested === 0) {
+            self.postMessage({ type: 'complete', payload: { yaml: 'No items requested.', uniqueCount: 0, totalRequested: 0 }});
+            return;
+        }
         
-        // --- THIS IS THE CORRECTED CALL ---
-        // We now use a range for part sizes for robust detection.
-        const minPartSize = config.minPartSize || 4;
-        const maxPartSize = config.maxPartSize || 8;
-        const highValueParts = extractHighValueParts(selectedRepoTails, minPartSize, maxPartSize);
-        
+        const [baseHeader, baseTail] = splitHeaderTail(config.seed);
+        let repoTails = (config.repositories[config.itemType] || '').split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
+        if (repoTails.length === 0) {
+            repoTails.push(baseTail); // Fallback to base seed
+        }
+
+        const highValueParts = extractHighValueParts(repoTails, config.minPartSize, config.maxPartSize);
         const legendaryStackingChance = config.legendaryChance / 100.0;
 
         const serialsToGenerate = [];
@@ -87,18 +100,19 @@ self.onmessage = async function(e) {
         for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: "TG2" });
         for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: "TG3" });
         for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: "TG4" });
-        serialsToGenerate.sort(() => getRandom() - 0.5);
+        serialsToGenerate.sort(() => Math.random() - 0.5);
 
         const seenSerials = new Set();
         const generatedSerials = [];
 
         for (let i = 0; i < totalRequested; i++) {
-            if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) { console.log("Random buffer low. Refilling..."); await generateRandomNumbersOnGPU(config.gpuBatchSize); console.log("Refill complete."); }
             const item = serialsToGenerate[i];
             let serial = '';
             let innerAttempts = 0;
+
             do {
-                const parentTail = randomChoice(selectedRepoTails);
+                const parentTail = randomChoice(repoTails);
+                
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
 
@@ -114,7 +128,8 @@ self.onmessage = async function(e) {
                     mutatedTail = performWindowedCrossover(baseTail, parentTail, dynamicTargetLength, protectedStartLength, config.minChunkSize, config.maxChunkSize, config.targetChunkSize);
                 }
                 
-                if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
+                // Terminal Repetition / Legendary Stacking
+                if (((item.tg === "TG3" && Math.random() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
                     const part = randomChoice(highValueParts);
                     const repetitions = randomInt(2, 5);
                     const repeatedBlock = part.repeat(repetitions);
@@ -134,36 +149,41 @@ self.onmessage = async function(e) {
             if (!seenSerials.has(serial)) {
                 seenSerials.add(serial);
                 const flagValue = TG_FLAGS[item.tg] || 0;
-                const final_item_flag = (flagValue !== 0) ? 1 : 0;
-                generatedSerials.push({ serial: serial, flag: final_item_flag, state_flag: flagValue, slot: generatedSerials.length });
+                generatedSerials.push({ serial: serial, flag: (flagValue !== 0) ? 1 : 0, state_flag: flagValue, slot: generatedSerials.length });
             }
-            if (i > 0 && i % 500 === 0) { self.postMessage({ type: 'progress', payload: { processed: i, total: totalRequested } }); }
+            
+            if (i > 0 && i % 500 === 0) {
+                self.postMessage({ type: 'progress', payload: { processed: i, total: totalRequested } });
+            }
         }
-
+        
+        // --- Validation Logic ---
         let validationResult = null;
         if (config.debugMode) {
-            const legendaryItems = generatedSerials.filter(item => item.state_flag === TG_FLAGS.TG3 || item.state_flag === TG_FLAGS.TG4);
-            let successCount = 0;
-
-            if (legendaryItems.length > 0 && highValueParts.length > 0) {
-                legendaryItems.forEach(item => {
-                    const tail = splitHeaderTail(item.serial)[1];
-                    if (highValueParts.some(part => tail.includes(part))) {
-                        successCount++;
-                    }
-                });
-                const successRate = legendaryItems.length > 0 ? ((successCount / legendaryItems.length) * 100).toFixed(1) : 0;
-                validationResult = `✅ Validation: ${successCount} of ${legendaryItems.length} legendary items (${successRate}%) contained a high-value part.`;
-            } else if (legendaryItems.length > 0) {
-                validationResult = "⚠️ Validation: No high-value parts were extracted from the repo. Try using a repo with more repeating patterns.";
-            } else {
-                validationResult = "ℹ️ Validation: No legendary items were generated, so no validation was performed.";
-            }
+             const legendaryItems = generatedSerials.filter(item => item.state_flag === TG_FLAGS.TG3 || item.state_flag === TG_FLAGS.TG4);
+             if (legendaryItems.length > 0) {
+                 if (highValueParts.length > 0) {
+                     const successCount = legendaryItems.filter(item => highValueParts.some(part => item.serial.includes(part))).length;
+                     const successRate = ((successCount / legendaryItems.length) * 100).toFixed(1);
+                     validationResult = `✅ Validation: ${successCount} of ${legendaryItems.length} legendary items (${successRate}%) contained a high-value part.`;
+                 } else {
+                     validationResult = "⚠️ Validation: No high-value parts were extracted from the repo.";
+                 }
+             }
         }
 
         const lines = ["state:", "  inventory:", "    items:", "      backpack:"];
-        generatedSerials.forEach(item => { lines.push(`        slot_${item.slot}:`); lines.push(`          serial: '${item.serial}'`); if (item.flag === 1) lines.push(`          flags: 1`); if (item.state_flag !== 0) lines.push(`          state_flags: ${item.state_flag}`); });
+        generatedSerials.forEach(item => {
+            lines.push(`        slot_${item.slot}:`);
+            lines.push(`          serial: '${item.serial}'`);
+            if (item.flag === 1) lines.push(`          flags: 1`);
+            if (item.state_flag !== 0) lines.push(`          state_flags: ${item.state_flag}`);
+        });
         
         self.postMessage({ type: 'complete', payload: { yaml: lines.join('\n'), uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: validationResult }});
-    } catch (error) { console.error("Worker Error:", error); self.postMessage({ type: 'error', payload: { message: error.message } }); }
+
+    } catch (error) {
+        console.error("Worker Error:", error);
+        self.postMessage({ type: 'error', payload: { message: error.message } });
+    }
 };
