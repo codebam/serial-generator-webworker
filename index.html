@@ -87,7 +87,9 @@
                     maxPart: 8, 
                     legendaryChance: 100,
                     legendaryPerkChance: 50,
-                    legendaryPerkRepo: ""
+                    legendaryPerkRepo: "",
+                    legendaryPerkMin: 30,
+                    legendaryPerkMax: 50
                 }
             };
             
@@ -162,6 +164,8 @@
                     legendaryChance: parseInt(state.rules.legendaryChance),
                     legendaryPerkChance: parseInt(state.rules.legendaryPerkChance),
                     legendaryPerkRepo: state.rules.legendaryPerkRepo,
+                    legendaryPerkMin: parseInt(state.rules.legendaryPerkMin),
+                    legendaryPerkMax: parseInt(state.rules.legendaryPerkMax),
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -239,6 +243,12 @@
                                 </FormGroup>
                                 <FormGroup label={`Legendary Perk Chance (${state.rules.legendaryPerkChance}%)`}>
                                     <input type="range" name="rules.legendaryPerkChance" min="0" max="100" value={state.rules.legendaryPerkChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                </FormGroup>
+                                <FormGroup label="Legendary Perk Injection Range (%)">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" name="rules.legendaryPerkMin" value={state.rules.legendaryPerkMin} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.legendaryPerkMax" value={state.rules.legendaryPerkMax} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
                                 </FormGroup>
                                 <FormGroup label="High-Value Part Size Range">
                                     <div className="grid grid-cols-2 gap-4">

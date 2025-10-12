@@ -121,7 +121,9 @@ self.onmessage = async function(e) {
 
                 // --- NEW LEGENDARY PERK INJECTION ---
                 if (legendaryPerk && getRandom() < legendaryPerkChance) {
-                    const injectionPoint = randomInt(Math.floor(dynamicTargetLength * 0.4), Math.floor(dynamicTargetLength * 0.6));
+                    const minInjectionPoint = Math.floor(dynamicTargetLength * (config.legendaryPerkMin / 100));
+                    const maxInjectionPoint = Math.floor(dynamicTargetLength * (config.legendaryPerkMax / 100));
+                    const injectionPoint = randomInt(minInjectionPoint, maxInjectionPoint);
                     mutatedTail = mutatedTail.slice(0, injectionPoint) + legendaryPerk + mutatedTail.slice(injectionPoint + legendaryPerk.length);
                 }
                 
