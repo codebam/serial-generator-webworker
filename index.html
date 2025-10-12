@@ -86,7 +86,8 @@
                     minPart: 4, 
                     maxPart: 8, 
                     legendaryChance: 100,
-                    legendaryPerkChance: 50
+                    legendaryPerkChance: 50,
+                    legendaryPerkRepo: ""
                 }
             };
             
@@ -101,8 +102,6 @@
             const [isGenerating, setIsGenerating] = useState(false);
             const [outputYaml, setOutputYaml] = useState("");
             
-            const [legendaryPerkRepo, setLegendaryPerkRepo] = useState("");
-
             const workerRef = useRef(null);
 
             useEffect(() => {
@@ -162,7 +161,7 @@
                     maxPartSize: parseInt(state.rules.maxPart),
                     legendaryChance: parseInt(state.rules.legendaryChance),
                     legendaryPerkChance: parseInt(state.rules.legendaryPerkChance),
-                    legendaryPerkRepo: legendaryPerkRepo,
+                    legendaryPerkRepo: state.rules.legendaryPerkRepo,
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -215,7 +214,7 @@
                                     <textarea className={`${inputClasses} min-h-[120px]`} value={state.repositoryData[state.currentRepo]} onChange={handleRepoEdit} placeholder="Paste serials here..."></textarea>
                                 </FormGroup>
                                 <FormGroup label="Legendary Perk Repository">
-                                    <textarea className={`${inputClasses} min-h-[120px]`} value={legendaryPerkRepo} onChange={(e) => setLegendaryPerkRepo(e.target.value)} placeholder="Paste legendary perk serials here..."></textarea>
+                                    <textarea className={`${inputClasses} min-h-[120px]`} name="rules.legendaryPerkRepo" value={state.rules.legendaryPerkRepo} onChange={handleInputChange} placeholder="Paste legendary perk serials here..."></textarea>
                                 </FormGroup>
                                  <FormGroup label="Base Serial Seed">
                                     <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
