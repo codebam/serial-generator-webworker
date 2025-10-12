@@ -63,7 +63,7 @@
         );
 
         const App = () => {
-            // --- STATE MANAGEMENT WITH ORIGINAL DEFAULTS RESTORED ---
+            // --- STATE MANAGEMENT WITH ALL ORIGINAL DEFAULTS ---
             const defaultState = {
                 repositoryData: { 
                     class_mod: "", 
@@ -77,8 +77,8 @@
                 seed: "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc",
                 counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
                 rules: {
-                    targetOffset: 0, 
-                    minProtected: 95,
+                    targetOffset: 250, // Corrected to emulate original behavior
+                    minProtected: 95, 
                     maxProtected: 100,
                     minChunk: 3, 
                     maxChunk: 7, 
