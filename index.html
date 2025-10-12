@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine v9.4 (React + Tailwind)</title>
+    <title>Serial Mutation Engine v9.5 (React + Tailwind)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -131,20 +131,15 @@
 
             const startGeneration = () => {
                 setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult("");
-
-                // --- THIS IS THE FIX ---
-                // We now explicitly create a 'repositories' key for the worker.
                 const config = {
                     seed: state.seed,
-                    repositories: state.repositoryData, // Correct mapping
+                    repositories: state.repositoryData,
                     itemType: state.currentRepo,
-                    
                     newCount: parseInt(state.counts.new),
                     tg1Count: parseInt(state.counts.tg1),
                     tg2Count: parseInt(state.counts.tg2),
                     tg3Count: parseInt(state.counts.tg3),
                     tg4Count: parseInt(state.counts.tg4),
-                    
                     targetOffset: parseInt(state.rules.targetOffset),
                     minProtectedPercent: parseInt(state.rules.minProtected),
                     maxProtectedPercent: parseInt(state.rules.maxProtected),
@@ -154,7 +149,6 @@
                     minPartSize: parseInt(state.rules.minPart),
                     maxPartSize: parseInt(state.rules.maxPart),
                     legendaryChance: parseInt(state.rules.legendaryChance),
-                    
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -220,9 +214,9 @@
                                 </FormGroup>
                                 <FormGroup label="Crossover Chunk Size">
                                     <div className="grid grid-cols-3 gap-4">
-                                        <input type="number" name="rules.minChunk" value={state.rules.minChunk} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.maxChunk" value={state.rules.maxChunk} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.targetChunk" value={state.rules.targetChunk} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.minChunk" value={state.rules.minChunk} onChange={handleInputChange} className={inputClasses} title="The smallest crossover segment size." />
+                                        <input type="number" name="rules.maxChunk" value={state.rules.maxChunk} onChange={handleInputChange} className={inputClasses} title="The largest crossover segment size." />
+                                        <input type="number" name="rules.targetChunk" value={state.rules.targetChunk} onChange={handleInputChange} className={inputClasses} title="The preferred crossover segment size." />
                                     </div>
                                 </FormGroup>
                                 <FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
