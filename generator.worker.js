@@ -33,7 +33,7 @@ function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; return [serial.substring(0, 10), serial.substring(10)]; }
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) { const frequencyMap = new Map(); for (let size = minPartSize; size <= maxPartSize; size++) { for (const tail of repoTails) { if (tail.length < size) continue; for (let i = 0; i <= tail.length - size; i++) { const fragment = tail.substring(i, i + size); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } } const repeatedParts = [...frequencyMap.entries()].filter(([, count]) => count > 1).sort((a, b) => (b[1] !== a[1]) ? b[1] - a[1] : b[0].length - a[0].length); return repeatedParts.map(entry => entry[0]); }
 
-function extractLegendaryPerks(tail, min, max) { if (!tail || tail.length < 10) return null; const middleStart = Math.floor(tail.length * (min / 100)); const middleEnd = Math.floor(tail.length * (max / 100)); const perkLength = Math.floor(tail.length * 0.1) + 5; const start = randomInt(middleStart, middleEnd - perkLength); return tail.substring(start, start + perkLength); }
+function extractLegendaryPerks(tail, min, max, lengthMin, lengthMax) { if (!tail || tail.length < 10) return null; const middleStart = Math.floor(tail.length * (min / 100)); const middleEnd = Math.floor(tail.length * (max / 100)); const perkLength = randomInt(lengthMin, lengthMax); const start = randomInt(middleStart, middleEnd - perkLength); return tail.substring(start, start + perkLength); }
 
 // --- INTELLIGENT MUTATION ALGORITHMS ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) return startPart.substring(0, finalLength); let padding = ''; for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET); return startPart + padding; }
@@ -65,7 +65,7 @@ self.onmessage = async function(e) {
         let legendaryPerk = null;
         if (legendaryPerkRepoTails.length > 0) {
             const randomPerkTail = randomChoice(legendaryPerkRepoTails);
-            legendaryPerk = extractLegendaryPerks(randomPerkTail, config.legendaryPerkExtractionMin, config.legendaryPerkExtractionMax);
+            legendaryPerk = extractLegendaryPerks(randomPerkTail, config.legendaryPerkExtractionMin, config.legendaryPerkExtractionMax, config.legendaryPerkLengthMin, config.legendaryPerkLengthMax);
         }
 
         const serialsToGenerate = [];

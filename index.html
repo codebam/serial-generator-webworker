@@ -88,10 +88,12 @@
                     legendaryChance: 100,
                     legendaryPerkChance: 50,
                     legendaryPerkRepo: "",
-                    legendaryPerkMin: 30,
-                    legendaryPerkMax: 50,
+                    legendaryPerkMin: 45,
+                    legendaryPerkMax: 55,
                     legendaryPerkExtractionMin: 25,
-                    legendaryPerkExtractionMax: 75
+                    legendaryPerkExtractionMax: 75,
+                    legendaryPerkLengthMin: 4,
+                    legendaryPerkLengthMax: 6
                 }
             };
             
@@ -170,6 +172,8 @@
                     legendaryPerkMax: parseInt(state.rules.legendaryPerkMax),
                     legendaryPerkExtractionMin: parseInt(state.rules.legendaryPerkExtractionMin),
                     legendaryPerkExtractionMax: parseInt(state.rules.legendaryPerkExtractionMax),
+                    legendaryPerkLengthMin: parseInt(state.rules.legendaryPerkLengthMin),
+                    legendaryPerkLengthMax: parseInt(state.rules.legendaryPerkLengthMax),
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -269,6 +273,12 @@
                                     <div className="grid grid-cols-2 gap-4">
                                         <input type="number" name="rules.legendaryPerkExtractionMin" value={state.rules.legendaryPerkExtractionMin} onChange={handleInputChange} className={inputClasses} />
                                         <input type="number" name="rules.legendaryPerkExtractionMax" value={state.rules.legendaryPerkExtractionMax} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label="Legendary Perk Length">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" name="rules.legendaryPerkLengthMin" value={state.rules.legendaryPerkLengthMin} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.legendaryPerkLengthMax" value={state.rules.legendaryPerkLengthMax} onChange={handleInputChange} className={inputClasses} />
                                     </div>
                                 </FormGroup>
                             </Accordion>
