@@ -3,152 +3,404 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine (v8.5 - Range Scanning)</title>
+    <title>Serial Mutation Engine v9.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-deep-blue: #0d1117; --bg-panel: #161b22; --border-color: #30363d; --text-primary: #c9d1d9; --text-secondary: #8b949e; --accent-orange: #f78166; --accent-cyan: #79c0ff; --accent-green: #56d364; --accent-red: #ff7b72; --accent-gray: #6e7681; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 2rem; background-color: var(--bg-deep-blue); color: var(--text-primary); }
-        .main-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 2rem; width: 95%; max-width: 95%; margin: 0 auto; }
-        .controls, .output { padding: 1.5rem; background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 1.5rem; }
-        h1 { color: var(--accent-orange); font-size: 2em; text-align: center; margin-bottom: 2rem; letter-spacing: 1px; }
-        h2 { color: var(--accent-cyan); font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin: 0; }
-        p { color: var(--text-secondary); font-size: 0.9em; margin: -1rem 0 0 0; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-secondary); }
-        input, textarea, select { width: 100%; padding: 0.75rem; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-deep-blue); color: var(--text-primary); font-family: "SF Mono", "Consolas", "Roboto Mono", monospace; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-        input[type="range"] { padding: 0; }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.4); }
-        #repo-editor { resize: vertical; min-height: 150px; }
-        #output-yaml { min-height: 400px; flex-grow: 1; }
-        .grid-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-        .button-bar { display: flex; gap: 1rem; margin-top: 1rem; }
-        button { padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s; flex-grow: 1; }
-        #generate-btn { background-color: var(--accent-orange); color: var(--bg-deep-blue); border-color: var(--accent-orange); }
-        #generate-btn:hover:not(:disabled) { background-color: #ff9a7f; }
-        #generate-btn:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
-        #reset-btn { background-color: var(--accent-gray); color: var(--text-primary); }
-        #reset-btn:hover { background-color: #8b949e; }
-        .output-actions { display: flex; gap: 0.5rem; }
-        .output-actions button { flex-grow: 0; }
-        #copy-btn { background-color: var(--accent-green); color: var(--bg-deep-blue); border-color: var(--accent-green); }
-        #download-btn { background-color: var(--accent-cyan); color: var(--bg-deep-blue); border-color: var(--accent-cyan); }
-        .status-bar { padding: 0.75rem; background-color: #1c2128; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600; text-align: center; }
-        .progress-container { width: 100%; background-color: var(--bg-deep-blue); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
-        .progress-bar { height: 24px; background-color: var(--accent-cyan); width: 0%; text-align: center; line-height: 24px; color: var(--bg-deep-blue); font-weight: 600; transition: width 0.3s; }
-        .hidden { display: none; }
-        .debug-switch-container { display: flex; align-items: center; margin-bottom: 1.5rem; padding: 1rem; background-color: rgba(247, 129, 102, 0.1); border: 1px solid var(--accent-orange); border-radius: 6px; }
-        .switch-label { margin-left: 10px; font-size: 0.9em; user-select: none; font-weight: 600; color: var(--accent-orange); }
-        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--accent-gray); transition: .4s; border-radius: 28px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent-orange); }
-        input:checked + .slider:before { transform: translateX(22px); }
-        #validation-output { margin-top: 1rem; padding: 10px; border-radius: 6px; background-color: #1c2128; font-family: monospace; font-size: 0.9em; color: var(--accent-green); border: 1px solid var(--border-color); }
+        :root {
+            --bg-primary: #111111;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --border-color: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-primary: #00aaff;
+            --accent-secondary: #ff8c00;
+            --accent-success: #33cc33;
+            --accent-danger: #ff4d4d;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+            --radius: 8px;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 2rem;
+            font-size: 16px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -1px;
+        }
+        
+        .header h1 span {
+            color: var(--accent-primary);
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: minmax(400px, 1.2fr) 2fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Accordion for Controls */
+        .controls-accordion details {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .controls-accordion details[open] {
+            background-color: #202020;
+        }
+        
+        .controls-accordion summary {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            color: var(--text-primary);
+        }
+        
+        .controls-accordion summary::before {
+            content: '►';
+            margin-right: 0.75rem;
+            font-size: 0.8em;
+            transition: transform 0.2s ease;
+            color: var(--accent-primary);
+        }
+
+        .controls-accordion details[open] summary::before {
+            transform: rotate(90deg);
+        }
+        
+        .accordion-content {
+            padding: 0 1.25rem 1.25rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 170, 255, 0.25);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .grid-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .slider-group input[type="range"] {
+            flex-grow: 1;
+            padding: 0;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        .slider-group input[type="range"]::-webkit-slider-runnable-track {
+            background: var(--bg-tertiary);
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -4px;
+            background-color: var(--accent-primary);
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+        }
+
+        .slider-group .slider-value {
+            font-weight: 500;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            background-color: var(--bg-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* --- Main Actions & Status --- */
+        .actions-panel {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .button-bar {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+        }
+        
+        button {
+            padding: 0.8rem 1rem;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        #generate-btn { background-color: var(--accent-primary); color: #fff; }
+        #generate-btn:hover:not(:disabled) { background-color: #33bbff; box-shadow: var(--shadow-md); }
+        #reset-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); }
+        #reset-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+        button:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
+
+        .progress-container { width: 100%; background-color: var(--bg-primary); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
+        .progress-bar { height: 8px; background-color: var(--accent-primary); width: 0%; transition: width 0.3s ease; }
+        .hidden { display: none !important; }
+
+        #status-message, #validation-output { text-align: center; font-size: 0.9rem; color: var(--text-secondary); padding: 0.5rem; }
+        #validation-output { background-color: rgba(51, 204, 51, 0.1); border-radius: 6px; color: var(--accent-success); }
+        #status-message.error { color: var(--accent-danger); }
+        
+        /* --- Output Panel --- */
+        .output-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .output-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .output-actions button {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding: 0.5rem 0.8rem;
+        }
+        .output-actions button:hover {
+             background-color: var(--border-color);
+             color: var(--text-primary);
+        }
+        
+        #output-yaml {
+            flex-grow: 1;
+            min-height: 600px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Serial Mutation Engine</h1>
-    
-    <div class="main-container">
-        <div class="controls">
-            
-            <div class="form-section">
-                <h2>📦 Repository Editor</h2>
-                <p>Select a repository to view/edit its contents below.</p>
-                <select id="item-type">
-                    <option value="class_mod" selected>Class Mod</option>
-                    <option value="shield">Shield</option>
-                    <option value="ordnance">Ordnance</option>
-                    <option value="enhancement">Enhancement</option>
-                    <option value="gun">Gun</option>
-                    <option value="repkit">Repkit</option>
-                </select>
-                <textarea id="repo-editor" placeholder="Paste complete serials here..."></textarea>
-            </div>
-            
-            <div class="form-section">
-                <h2>Base Serial Seed</h2>
-                <textarea id="seed" rows="4"></textarea>
-            </div>
-            
-            <div class="form-section">
-                <h2>Final Tail Length Offset</h2>
-                <div class="grid-group">
-                    <div class="form-group"><label for="target-tail-offset">Target Offset</label><input type="number" id="target-tail-offset" value="0"></div>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h2>🧬 Mutation Configuration</h2>
-                <div class="grid-group">
-                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px;">
-                        <label for="min-protected-percent">Min Protected Start %</label>
-                        <input type="number" id="min-protected-percent" value="95" min="0" max="100">
-                    </div>
-                    <div class="form-group" style="border: 1px solid var(--accent-red); padding: 1rem; border-radius: 6px;">
-                        <label for="max-protected-percent">Max Protected Start %</label>
-                        <input type="number" id="max-protected-percent" value="100" min="0" max="100">
-                    </div>
-                    <div class="form-group"><label for="min-chunk-size">Min Chunk Size</label><input type="number" id="min-chunk-size" value="3"></div>
-                    <div class="form-group"><label for="max-chunk-size">Max Chunk Size</label><input type="number" id="max-chunk-size" value="7"></div>
-                    <div class="form-group"><label for="target-chunk-size">Target Chunk Size</label><input type="number" id="target-chunk-size" value="5"></div>
+    <header class="header">
+        <h1>Serial Mutation <span>Engine</span></h1>
+        <p>A professional tool for procedural serial generation and mutation.</p>
+    </header>
 
-                    <div class="form-group" style="grid-column: 1 / -1; border: 1px solid var(--accent-green); padding: 1rem; border-radius: 6px;">
-                        <label>High-Value Part Size Range (for TG3/4)</label>
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <input type="number" id="min-part-size" value="4" min="2" max="10" title="The smallest pattern size to scan for in the repository.">
-                            <span style="color: var(--text-secondary);">to</span>
-                            <input type="number" id="max-part-size" value="8" min="3" max="15" title="The largest pattern size to scan for in the repository.">
+    <main class="main-container">
+        
+        <div class="controls">
+            <div class="controls-accordion">
+                
+                <details open>
+                    <summary>📦 Repository & Base Seed</summary>
+                    <div class="accordion-content">
+                        <div class="form-group">
+                            <label for="item-type">Active Repository</label>
+                            <select id="item-type">
+                                <option value="class_mod" selected>Class Mod</option>
+                                <option value="shield">Shield</option>
+                                <option value="ordnance">Ordnance</option>
+                                <option value="enhancement">Enhancement</option>
+                                <option value="gun">Gun</option>
+                                <option value="repkit">Repkit</option>
+                            </select>
+                            <textarea id="repo-editor" placeholder="Paste complete serials for the selected repository here..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="seed">Base Serial Seed</label>
+                            <textarea id="seed" rows="3" placeholder="Paste the base serial to mutate from..."></textarea>
                         </div>
                     </div>
-                </div>
-            </div>
+                </details>
 
-            <div class="form-section">
-                <h2>Serial Count by Tag Group</h2>
-                <div class="grid-group">
-                    <div class="form-group"><label for="new-count">NEW (0)</label><input type="number" id="new-count" value="10000" min="0"></div>
-                    <div class="form-group"><label for="tg1-count">TG1 (17)</label><input type="number" id="tg1-count" value="0" min="0"></div>
-                    <div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div>
-                    <div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div>
-                    <div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div>
-                </div>
-            </div>
-            
-            <div class="status-bar" id="status-message">Ready to generate.</div>
-            <div class="progress-container hidden" id="progress-container">
-                <div class="progress-bar" id="progress-bar">0%</div>
-            </div>
-            
-            <div id="validation-output" class="hidden"></div>
-
-            <div class="debug-switch-container">
-              <label class="switch">
-                <input type="checkbox" id="debug-switch">
-                <span class="slider"></span>
-              </label>
-              <label for="debug-switch" class="switch-label">Enable Output Validation</label>
-            </div>
-            
-            <div class="button-bar">
-                <button id="generate-btn" onclick="startGeneration()">GENERATE SERIALS</button>
-                <button id="reset-btn" onclick="resetFormWithConfirm()">RESET FORM</button>
-            </div>
-
-        </div>
-        <div class="output">
-            <div class="form-section" style="height: 100%;">
-                <h2 style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>YAML Output</span>
-                    <div class="output-actions">
-                        <button id="copy-btn" onclick="copyToClipboard()"><span id="copy-text">Copy</span></button>
-                        <button id="download-btn" onclick="downloadYAML()"><span id="download-text">Download</span></button>
+                <details open>
+                    <summary>🧬 Mutation Rules</summary>
+                    <div class="accordion-content">
+                        <div class="form-group">
+                             <label>Protected Start (%)</label>
+                             <div class="grid-group">
+                                 <input type="number" id="min-protected-percent" value="95" min="0" max="100" title="Minimum Protected Start Percentage">
+                                 <input type="number" id="max-protected-percent" value="100" min="0" max="100" title="Maximum Protected Start Percentage">
+                             </div>
+                        </div>
+                        <div class="form-group">
+                             <label>Crossover Chunk Size (for TG1-4)</label>
+                             <div class="grid-group">
+                                 <input type="number" id="min-chunk-size" value="3" title="Minimum Chunk Size">
+                                 <input type="number" id="max-chunk-size" value="7" title="Maximum Chunk Size">
+                                 <input type="number" id="target-chunk-size" value="5" title="Target Chunk Size">
+                             </div>
+                        </div>
+                         <div class="form-group">
+                            <label for="legendary-chance">Legendary Part Chance (%)</label>
+                            <div class="slider-group">
+                                <input type="range" id="legendary-chance" min="0" max="100" value="100" step="1">
+                                <span class="slider-value" id="legendary-chance-value">100%</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>High-Value Part Size Range</label>
+                            <div class="grid-group">
+                                 <input type="number" id="min-part-size" value="4" min="2" max="10" title="The smallest pattern size to scan for.">
+                                 <input type="number" id="max-part-size" value="8" min="3" max="15" title="The largest pattern size to scan for.">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="target-tail-offset">Final Tail Length Offset</label>
+                            <input type="number" id="target-tail-offset" value="0" title="Offset relative to base seed's tail length. E.g., -5 makes it shorter, 10 makes it longer.">
+                        </div>
                     </div>
-                </h2>
-                <textarea id="output-yaml" readonly placeholder="Generated YAML will appear here..."></textarea>
+                </details>
+
+                <details>
+                    <summary>🔢 Output Counts</summary>
+                    <div class="accordion-content">
+                        <div class="grid-group">
+                            <div class="form-group"><label for="new-count">NEW (0)</label><input type="number" id="new-count" value="10000" min="0"></div>
+                            <div class="form-group"><label for="tg1-count">TG1 (17)</label><input type="number" id="tg1-count" value="0" min="0"></div>
+                            <div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div>
+                            <div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div>
+                            <div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div>
+                        </div>
+                    </div>
+                </details>
+
+            </div>
+            
+            <div class="actions-panel">
+                <div class="button-bar">
+                    <button id="generate-btn" onclick="startGeneration()">Generate Serials</button>
+                    <button id="reset-btn" onclick="resetFormWithConfirm()">Reset Rules</button>
+                </div>
+                <div id="status-message">Ready to generate.</div>
+                <div class="progress-container hidden" id="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div id="validation-output" class="hidden"></div>
             </div>
         </div>
-    </div>
+        
+        <div class="output-panel">
+            <div class="output-header">
+                <h2>YAML Output</h2>
+                <div class="output-actions">
+                    <button id="copy-btn" onclick="copyToClipboard()"><span id="copy-text">Copy</span></button>
+                    <button id="download-btn" onclick="downloadYAML()"><span id="download-text">Download</span></button>
+                </div>
+            </div>
+            <textarea id="output-yaml" readonly placeholder="Generated YAML will appear here..."></textarea>
+        </div>
+
+    </main>
 
 <script>
     const worker = new Worker('generator.worker.js');
@@ -157,46 +409,66 @@
     let repositoryData = { class_mod: "", shield: "", ordnance: "", enhancement: "", gun: "", repkit: "" };
     let currentRepo = 'class_mod';
 
+    // --- UI ELEMENT SELECTORS ---
+    const legendaryChanceSlider = document.getElementById('legendary-chance');
+    const legendaryChanceValue = document.getElementById('legendary-chance-value');
+
     // --- MAIN EXECUTION START ---
     function startGeneration() {
-        const repoEditor = document.getElementById('repo-editor');
-        repositoryData[currentRepo] = repoEditor.value;
+        repositoryData[currentRepo] = document.getElementById('repo-editor').value;
 
-        const btn = document.getElementById('generate-btn'); btn.disabled = true; document.getElementById('output-yaml').value = ""; document.getElementById('progress-container').classList.remove('hidden');
-        
+        const btn = document.getElementById('generate-btn');
+        const statusMessage = document.getElementById('status-message');
         const validationOutput = document.getElementById('validation-output');
+        
+        btn.disabled = true;
+        document.getElementById('output-yaml').value = "";
+        document.getElementById('progress-container').classList.remove('hidden');
         validationOutput.textContent = '';
         validationOutput.classList.add('hidden');
-        const debugMode = document.getElementById('debug-switch').checked;
-        
-        // --- UPDATED CONFIG OBJECT ---
+        statusMessage.classList.remove('error');
+
         const config = {
             seed: document.getElementById('seed').value, 
             itemType: document.getElementById('item-type').value,
-            newCount: parseInt(document.getElementById('new-count').value), tg1Count: parseInt(document.getElementById('tg1-count').value), tg2Count: parseInt(document.getElementById('tg2-count').value), tg3Count: parseInt(document.getElementById('tg3-count').value), tg4Count: parseInt(document.getElementById('tg4-count').value),
             repositories: repositoryData,
-            targetOffset: parseInt(document.getElementById('target-tail-offset').value),
-            minProtectedPercent: parseInt(document.getElementById('min-protected-percent').value), maxProtectedPercent: parseInt(document.getElementById('max-protected-percent').value),
-            minChunkSize: parseInt(document.getElementById('min-chunk-size').value), maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
             
-            // --- NEW: Read part size range from the new inputs ---
+            newCount: parseInt(document.getElementById('new-count').value), 
+            tg1Count: parseInt(document.getElementById('tg1-count').value), 
+            tg2Count: parseInt(document.getElementById('tg2-count').value), 
+            tg3Count: parseInt(document.getElementById('tg3-count').value), 
+            tg4Count: parseInt(document.getElementById('tg4-count').value),
+            
+            targetOffset: parseInt(document.getElementById('target-tail-offset').value),
+            minProtectedPercent: parseInt(document.getElementById('min-protected-percent').value), 
+            maxProtectedPercent: parseInt(document.getElementById('max-protected-percent').value),
+            minChunkSize: parseInt(document.getElementById('min-chunk-size').value), 
+            maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), 
+            targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
             minPartSize: parseInt(document.getElementById('min-part-size').value),
             maxPartSize: parseInt(document.getElementById('max-part-size').value),
-            legendaryChance: 100, // Assuming 100% for now, can be added as a UI element later
+            legendaryChance: parseInt(legendaryChanceSlider.value),
             
             gpuBatchSize: 250000,
-            debugMode: debugMode
+            debugMode: true // Keep validation on by default for now
         };
         
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
-        if (totalRequested === 0) { handleError("Request at least one serial."); return; }
-        document.getElementById('status-message').textContent = `Sending job to background thread...`; updateProgress(0, totalRequested);
+        if (totalRequested === 0) {
+            handleError("Please request at least one serial to generate.");
+            return;
+        }
+        
+        statusMessage.textContent = `Sending job to background thread...`;
+        updateProgress(0, totalRequested);
         worker.postMessage({ type: 'generate', payload: config });
     }
     
     // --- WORKER MESSAGE HANDLING ---
     worker.onmessage = function(e) {
         const { type, payload } = e.data;
+        const statusMessage = document.getElementById('status-message');
+        
         switch(type) {
             case 'progress':
                 updateProgress(payload.processed, payload.total);
@@ -205,7 +477,7 @@
                 finalizeGeneration(payload);
                 break;
             case 'warning':
-                document.getElementById('status-message').textContent = `Warning: ${payload}`;
+                statusMessage.textContent = `Warning: ${payload}`;
                 break;
             case 'error':
                 handleError(payload.message);
@@ -215,15 +487,14 @@
     
     function updateProgress(processed, total) {
         const progressBar = document.getElementById('progress-bar');
-        const percent = total > 0 ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
+        const percent = total > 0 ? Math.min(100, (processed / total) * 100) : 0;
         progressBar.style.width = `${percent}%`;
-        progressBar.textContent = `${percent}%`;
-        document.getElementById('status-message').textContent = `Generating... Processing ${processed.toLocaleString()} of ${total.toLocaleString()} serials.`;
+        document.getElementById('status-message').textContent = `Generating... ${processed.toLocaleString()} / ${total.toLocaleString()}`;
     }
 
     function finalizeGeneration(payload) {
         document.getElementById('output-yaml').value = payload.yaml;
-        document.getElementById('status-message').textContent = `✅ Generation Complete! Wrote ${payload.uniqueCount.toLocaleString()} unique serials. (Requested: ${payload.totalRequested.toLocaleString()}).`;
+        document.getElementById('status-message').textContent = `✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`;
         document.getElementById('progress-container').classList.add('hidden');
         document.getElementById('generate-btn').disabled = false;
 
@@ -235,17 +506,49 @@
     }
 
     function handleError(message) {
-        console.error("Worker Error:", message);
-        document.getElementById('status-message').textContent = `❌ ERROR: ${message}`;
+        const statusMessage = document.getElementById('status-message');
+        statusMessage.textContent = `❌ ERROR: ${message}`;
+        statusMessage.classList.add('error');
         document.getElementById('progress-container').classList.add('hidden');
         document.getElementById('generate-btn').disabled = false;
     }
     
     // --- UTILITY FUNCTIONS ---
-    async function copyToClipboard() { const textarea = document.getElementById('output-yaml'); const copyText = document.getElementById('copy-text'); const originalText = copyText.textContent; const yamlContent = textarea.value; if (!yamlContent) return alert("There is no YAML content to copy."); if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(yamlContent); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Copy Failed"; alert("Could not copy text."); } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } else { textarea.select(); try { document.execCommand('copy'); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Error"; } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } }
-    function downloadYAML() { const yamlContent = document.getElementById('output-yaml').value; const downloadText = document.getElementById('download-text'); const originalText = downloadText.textContent; if (!yamlContent) return alert("There is no YAML content to download."); try { const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", "generated_serials.yaml"); document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); downloadText.textContent = "Downloaded!"; } catch (err) { downloadText.textContent = "Error"; } finally { setTimeout(() => { downloadText.textContent = originalText; }, 2000); } }
+    async function copyToClipboard() {
+        const textarea = document.getElementById('output-yaml');
+        const copyText = document.getElementById('copy-text');
+        const originalText = copyText.textContent;
+        if (!textarea.value) return;
+        try {
+            await navigator.clipboard.writeText(textarea.value);
+            copyText.textContent = "Copied!";
+        } catch (err) {
+            copyText.textContent = "Failed!";
+        } finally {
+            setTimeout(() => { copyText.textContent = originalText; }, 2000);
+        }
+    }
+
+    function downloadYAML() {
+        const yamlContent = document.getElementById('output-yaml').value;
+        const downloadText = document.getElementById('download-text');
+        const originalText = downloadText.textContent;
+        if (!yamlContent) return;
+        try {
+            const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "generated_serials.yaml";
+            link.click();
+            URL.revokeObjectURL(link.href);
+            downloadText.textContent = "Downloaded!";
+        } catch (err) {
+            downloadText.textContent = "Failed!";
+        } finally {
+            setTimeout(() => { downloadText.textContent = originalText; }, 2000);
+        }
+    }
     
-    // --- UPDATED RESET FUNCTION ---
     function resetForm() {
         document.getElementById('target-tail-offset').value = 0;
         document.getElementById('min-protected-percent').value = 100;
@@ -253,15 +556,51 @@
         document.getElementById('min-chunk-size').value = 3;
         document.getElementById('max-chunk-size').value = 7;
         document.getElementById('target-chunk-size').value = 5;
-        // --- NEW: Reset part size inputs ---
         document.getElementById('min-part-size').value = 4;
         document.getElementById('max-part-size').value = 8;
-        document.getElementById('status-message').textContent = "Algorithm settings have been reset to their defaults.";
+        legendaryChanceSlider.value = 100;
+        legendaryChanceValue.textContent = '100%';
+        document.getElementById('status-message').textContent = "Mutation rules reset to defaults.";
     }
 
-    function resetFormWithConfirm() { if (confirm("Are you sure you want to reset the algorithm's Tuning and Offset settings to their defaults? Your serials and counts will NOT be changed.")) { resetForm(); } }
-    
-    window.onload = () => { const itemTypeSelector = document.getElementById('item-type'); const repoEditor = document.getElementById('repo-editor'); function switchRepoView(event) { const newRepo = event.target.value; repositoryData[currentRepo] = repoEditor.value; repoEditor.value = repositoryData[newRepo]; currentRepo = newRepo; } itemTypeSelector.addEventListener('change', switchRepoView); if (document.getElementById('seed').value === '') { console.log("First visit detected. Setting form defaults."); document.getElementById('item-type').value = 'class_mod'; document.getElementById('seed').value = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U"; document.getElementById('new-count').value = 10000; for (const key in repositoryData) { repositoryData[key] = ""; } repoEditor.value = repositoryData['class_mod']; resetForm(); document.getElementById('status-message').textContent = "Form set to defaults. Ready to generate 10,000 NEW items."; } else { console.log("Browser has restored form state."); currentRepo = itemTypeSelector.value; repositoryData[currentRepo] = repoEditor.value; document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate."; } };
+    function resetFormWithConfirm() {
+        if (confirm("Are you sure you want to reset all mutation rules to their defaults?")) {
+            resetForm();
+        }
+    }
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+        const itemTypeSelector = document.getElementById('item-type');
+        const repoEditor = document.getElementById('repo-editor');
+
+        function switchRepoView(event) {
+            const newRepo = event.target.value;
+            repositoryData[currentRepo] = repoEditor.value;
+            repoEditor.value = repositoryData[newRepo] || '';
+            currentRepo = newRepo;
+        }
+        itemTypeSelector.addEventListener('change', switchRepoView);
+
+        legendaryChanceSlider.addEventListener('input', (e) => {
+            legendaryChanceValue.textContent = `${e.target.value}%`;
+        });
+
+        if (document.getElementById('seed').value === '') {
+            console.log("First visit detected. Setting form defaults.");
+            document.getElementById('seed').value = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
+            document.getElementById('new-count').value = 10000;
+            for (const key in repositoryData) { repositoryData[key] = ""; }
+            repoEditor.value = "";
+            resetForm();
+            document.getElementById('status-message').textContent = "Defaults set. Ready to generate.";
+        } else {
+            console.log("Restored previous form state.");
+            currentRepo = itemTypeSelector.value;
+            repositoryData[currentRepo] = repoEditor.value;
+            document.getElementById('status-message').textContent = "Settings restored. Ready to generate.";
+        }
+    };
 </script>
 
 </body>
