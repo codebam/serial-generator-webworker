@@ -3,604 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine v9.0</title>
+    <title>Serial Mutation Engine v9.4 (React + Tailwind)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #111111;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #2a2a2a;
-            --border-color: #333333;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --accent-primary: #00aaff;
-            --accent-secondary: #ff8c00;
-            --accent-success: #33cc33;
-            --accent-danger: #ff4d4d;
-            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
-            --radius: 8px;
-        }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: var(--font-body);
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            padding: 2rem;
-            font-size: 16px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: -1px;
-        }
-        
-        .header h1 span {
-            color: var(--accent-primary);
-        }
-
-        .header p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            margin-top: 0.5rem;
-        }
-        
-        .main-container {
-            display: grid;
-            grid-template-columns: minmax(400px, 1.2fr) 2fr;
-            gap: 2rem;
-            width: 100%;
-            max-width: 1800px;
-            margin: 0 auto;
-        }
-
-        @media (max-width: 1200px) {
-            .main-container {
-                grid-template-columns: 1fr;
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['SF Mono', 'ui-monospace', 'monospace']
+                    }
+                }
             }
         }
-
-        /* Accordion for Controls */
-        .controls-accordion details {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            margin-bottom: 1rem;
-            transition: background-color 0.2s ease;
-        }
-
-        .controls-accordion details[open] {
-            background-color: #202020;
-        }
-        
-        .controls-accordion summary {
-            display: flex;
-            align-items: center;
-            padding: 1rem 1.25rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            list-style: none;
-            color: var(--text-primary);
-        }
-        
-        .controls-accordion summary::before {
-            content: '►';
-            margin-right: 0.75rem;
-            font-size: 0.8em;
-            transition: transform 0.2s ease;
-            color: var(--accent-primary);
-        }
-
-        .controls-accordion details[open] summary::before {
-            transform: rotate(90deg);
-        }
-        
-        .accordion-content {
-            padding: 0 1.25rem 1.25rem 1.25rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        label {
-            font-weight: 500;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        input, textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-family: 'SF Mono', 'Consolas', monospace;
-            font-size: 14px;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(0, 170, 255, 0.25);
-        }
-        
-        textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
-
-        .grid-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
-        }
-
-        .slider-group {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .slider-group input[type="range"] {
-            flex-grow: 1;
-            padding: 0;
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
-            cursor: pointer;
-        }
-        
-        .slider-group input[type="range"]::-webkit-slider-runnable-track {
-            background: var(--bg-tertiary);
-            height: 8px;
-            border-radius: 4px;
-        }
-        
-        .slider-group input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            margin-top: -4px;
-            background-color: var(--accent-primary);
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-        }
-
-        .slider-group .slider-value {
-            font-weight: 500;
-            font-family: 'SF Mono', 'Consolas', monospace;
-            background-color: var(--bg-primary);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            min-width: 50px;
-            text-align: center;
-        }
-
-        /* --- Main Actions & Status --- */
-        .actions-panel {
-            background: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .button-bar {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1rem;
-        }
-        
-        button {
-            padding: 0.8rem 1rem;
-            font-family: var(--font-body);
-            font-weight: 600;
-            font-size: 1rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        
-        #generate-btn { background-color: var(--accent-primary); color: #fff; }
-        #generate-btn:hover:not(:disabled) { background-color: #33bbff; box-shadow: var(--shadow-md); }
-        #reset-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); }
-        #reset-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
-        button:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
-
-        .progress-container { width: 100%; background-color: var(--bg-primary); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
-        .progress-bar { height: 8px; background-color: var(--accent-primary); width: 0%; transition: width 0.3s ease; }
-        .hidden { display: none !important; }
-
-        #status-message, #validation-output { text-align: center; font-size: 0.9rem; color: var(--text-secondary); padding: 0.5rem; }
-        #validation-output { background-color: rgba(51, 204, 51, 0.1); border-radius: 6px; color: var(--accent-success); }
-        #status-message.error { color: var(--accent-danger); }
-        
-        /* --- Output Panel --- */
-        .output-panel {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .output-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .output-header h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .output-actions button {
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            padding: 0.5rem 0.8rem;
-        }
-        .output-actions button:hover {
-             background-color: var(--border-color);
-             color: var(--text-primary);
-        }
-        
-        #output-yaml {
-            flex-grow: 1;
-            min-height: 600px;
-        }
+    </script>
+    
+    <style>
+        body { background-color: #111827; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .accordion-summary::-webkit-details-marker { display: none; }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-gray-200 font-sans">
+    
+    <div id="root"></div>
 
-    <header class="header">
-        <h1>Serial Mutation <span>Engine</span></h1>
-    </header>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <main class="main-container">
+    <script type="text/babel">
+        const { useState, useEffect, useRef, Fragment } = React;
+
+        // A reusable Accordion component
+        const Accordion = ({ title, children, open = false }) => (
+            <details open={open} className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
+                <summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
+                    {title}
+                    <svg className="w-5 h-5 transition-transform transform details-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </summary>
+                <div className="p-5 pt-2 flex flex-col gap-6">{children}</div>
+                <style>{`.accordion-summary + .details-arrow { transition: transform 0.2s; } details[open] .details-arrow { transform: rotate(90deg); }`}</style>
+            </details>
+        );
         
-        <div class="controls">
-            <div class="controls-accordion">
-                
-                <details open>
-                    <summary>📦 Repository & Base Seed</summary>
-                    <div class="accordion-content">
-                        <div class="form-group">
-                            <label for="item-type">Active Repository</label>
-                            <select id="item-type">
-                                <option value="class_mod" selected>Class Mod</option>
-                                <option value="shield">Shield</option>
-                                <option value="ordnance">Ordnance</option>
-                                <option value="enhancement">Enhancement</option>
-                                <option value="gun">Gun</option>
-                                <option value="repkit">Repkit</option>
-                            </select>
-                            <textarea id="repo-editor" placeholder="Paste complete serials for the selected repository here..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="seed">Base Serial Seed</label>
-                            <textarea id="seed" rows="3" placeholder="Paste the base serial to mutate from..."></textarea>
-                        </div>
-                    </div>
-                </details>
+        // A reusable Form Group component
+        const FormGroup = ({ label, children }) => (
+            <div className="flex flex-col gap-2">
+                <label className="font-medium text-gray-400 text-sm">{label}</label>
+                {children}
+            </div>
+        );
 
-                <details open>
-                    <summary>🧬 Mutation Rules</summary>
-                    <div class="accordion-content">
-                        <div class="form-group">
-                             <label>Protected Start (%)</label>
-                             <div class="grid-group">
-                                 <input type="number" id="min-protected-percent" value="95" min="0" max="100" title="Minimum Protected Start Percentage">
-                                 <input type="number" id="max-protected-percent" value="100" min="0" max="100" title="Maximum Protected Start Percentage">
-                             </div>
-                        </div>
-                        <div class="form-group">
-                             <label>Crossover Chunk Size (for TG1-4)</label>
-                             <div class="grid-group">
-                                 <input type="number" id="min-chunk-size" value="3" title="Minimum Chunk Size">
-                                 <input type="number" id="max-chunk-size" value="7" title="Maximum Chunk Size">
-                                 <input type="number" id="target-chunk-size" value="5" title="Target Chunk Size">
-                             </div>
-                        </div>
-                         <div class="form-group">
-                            <label for="legendary-chance">Legendary Part Chance (%)</label>
-                            <div class="slider-group">
-                                <input type="range" id="legendary-chance" min="0" max="100" value="100" step="1">
-                                <span class="slider-value" id="legendary-chance-value">100%</span>
+        const App = () => {
+            // --- STATE MANAGEMENT ---
+            const defaultState = {
+                repositoryData: { class_mod: "", shield: "", ordnance: "", enhancement: "", gun: "", repkit: "" },
+                currentRepo: 'class_mod',
+                seed: "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U",
+                counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
+                rules: {
+                    targetOffset: 0, minProtected: 100, maxProtected: 100,
+                    minChunk: 3, maxChunk: 7, targetChunk: 5,
+                    minPart: 4, maxPart: 8, legendaryChance: 100
+                }
+            };
+            
+            const [state, setState] = useState(() => {
+                const savedState = localStorage.getItem('serialGenState');
+                return savedState ? JSON.parse(savedState) : defaultState;
+            });
+            
+            const [statusMessage, setStatusMessage] = useState("Ready to generate.");
+            const [validationResult, setValidationResult] = useState("");
+            const [progress, setProgress] = useState(0);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [outputYaml, setOutputYaml] = useState("");
+            
+            const workerRef = useRef(null);
+
+            // --- LOCALSTORAGE & WORKER INITIALIZATION ---
+            useEffect(() => {
+                localStorage.setItem('serialGenState', JSON.stringify(state));
+                if (!workerRef.current) {
+                    workerRef.current = new Worker('generator.worker.js');
+                    workerRef.current.onmessage = (e) => {
+                        const { type, payload } = e.data;
+                        switch(type) {
+                            case 'progress':
+                                setProgress((payload.processed / payload.total) * 100);
+                                setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+                                break;
+                            case 'complete':
+                                setIsGenerating(false);
+                                setOutputYaml(payload.yaml);
+                                setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+                                if (payload.validationResult) setValidationResult(payload.validationResult);
+                                break;
+                            case 'error':
+                                setIsGenerating(false);
+                                setStatusMessage(`❌ ERROR: ${payload.message}`);
+                                break;
+                        }
+                    };
+                }
+            }, [state]);
+
+            // --- EVENT HANDLERS ---
+            const handleInputChange = (e) => {
+                const { name, value, type } = e.target;
+                const val = type === 'number' || type === 'range' ? parseInt(value) : value;
+                const [category, key] = name.split('.');
+                setState(prev => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
+            };
+            const handleRepoSelect = (e) => setState(prev => ({ ...prev, currentRepo: e.target.value }));
+            const handleRepoEdit = (e) => setState(prev => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: e.target.value }}));
+            const handleSeedEdit = (e) => setState(prev => ({...prev, seed: e.target.value}));
+
+            const startGeneration = () => {
+                setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult("");
+
+                // --- THIS IS THE FIX ---
+                // We now explicitly create a 'repositories' key for the worker.
+                const config = {
+                    seed: state.seed,
+                    repositories: state.repositoryData, // Correct mapping
+                    itemType: state.currentRepo,
+                    
+                    newCount: parseInt(state.counts.new),
+                    tg1Count: parseInt(state.counts.tg1),
+                    tg2Count: parseInt(state.counts.tg2),
+                    tg3Count: parseInt(state.counts.tg3),
+                    tg4Count: parseInt(state.counts.tg4),
+                    
+                    targetOffset: parseInt(state.rules.targetOffset),
+                    minProtectedPercent: parseInt(state.rules.minProtected),
+                    maxProtectedPercent: parseInt(state.rules.maxProtected),
+                    minChunkSize: parseInt(state.rules.minChunk),
+                    maxChunkSize: parseInt(state.rules.maxChunk),
+                    targetChunkSize: parseInt(state.rules.targetChunk),
+                    minPartSize: parseInt(state.rules.minPart),
+                    maxPartSize: parseInt(state.rules.maxPart),
+                    legendaryChance: parseInt(state.rules.legendaryChance),
+                    
+                    gpuBatchSize: 250000,
+                    debugMode: true,
+                };
+                workerRef.current.postMessage({ type: 'generate', payload: config });
+            };
+            
+            const resetForm = () => {
+                if(confirm("Are you sure you want to reset all mutation rules to their defaults?")) {
+                    setState(prev => ({ ...prev, rules: defaultState.rules }));
+                    setStatusMessage("Mutation rules reset to defaults.");
+                }
+            };
+            
+            const copyToClipboard = async () => { if(outputYaml) await navigator.clipboard.writeText(outputYaml); };
+            const downloadYAML = () => {
+                if(!outputYaml) return;
+                const blob = new Blob([outputYaml], { type: 'text/yaml;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "generated_serials.yaml";
+                link.click();
+                URL.revokeObjectURL(link.href);
+            };
+
+            const inputClasses = "w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm";
+            const btnClasses = {
+                primary: "py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed",
+                secondary: "py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50",
+                tertiary: "py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all"
+            };
+
+            // --- RENDER ---
+            return (
+                <div className="p-4 md:p-8">
+                    <header className="text-center mb-12">
+                        <h1 className="text-4xl md:text-5xl font-bold text-gray-100">Serial Mutation <span className="text-blue-400">Engine</span></h1>
+                    </header>
+                    <main className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] gap-8 max-w-7xl mx-auto">
+                        <div className="flex flex-col gap-4">
+                            {/* Control Sections */}
+                            <Accordion title="📦 Repository & Base Seed" open={true}>
+                                <FormGroup label="Active Repository">
+                                    <select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
+                                        <option value="class_mod">Class Mod</option>
+                                        <option value="shield">Shield</option>
+                                        <option value="ordnance">Ordnance</option>
+                                        <option value="enhancement">Enhancement</option>
+                                        <option value="gun">Gun</option>
+                                        <option value="repkit">Repkit</option>
+                                    </select>
+                                    <textarea className={`${inputClasses} min-h-[120px]`} value={state.repositoryData[state.currentRepo]} onChange={handleRepoEdit} placeholder="Paste serials here..."></textarea>
+                                </FormGroup>
+                                 <FormGroup label="Base Serial Seed">
+                                    <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
+                                </FormGroup>
+                            </Accordion>
+                            <Accordion title="🧬 Mutation Rules" open={true}>
+                                <FormGroup label="Protected Start (%)">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" name="rules.minProtected" value={state.rules.minProtected} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.maxProtected" value={state.rules.maxProtected} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label="Crossover Chunk Size">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <input type="number" name="rules.minChunk" value={state.rules.minChunk} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.maxChunk" value={state.rules.maxChunk} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.targetChunk" value={state.rules.targetChunk} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
+                                    <input type="range" name="rules.legendaryChance" min="0" max="100" value={state.rules.legendaryChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                </FormGroup>
+                                <FormGroup label="High-Value Part Size Range">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" name="rules.minPart" value={state.rules.minPart} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.maxPart" value={state.rules.maxPart} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label="Final Tail Length Offset">
+                                    <input type="number" name="rules.targetOffset" value={state.rules.targetOffset} onChange={handleInputChange} className={inputClasses} />
+                                </FormGroup>
+                            </Accordion>
+                            <Accordion title="🔢 Output Counts">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                    <FormGroup label="NEW"><input type="number" name="counts.new" value={state.counts.new} onChange={handleInputChange} className={inputClasses} /></FormGroup>
+                                    <FormGroup label="TG1"><input type="number" name="counts.tg1" value={state.counts.tg1} onChange={handleInputChange} className={inputClasses} /></FormGroup>
+                                    <FormGroup label="TG2"><input type="number" name="counts.tg2" value={state.counts.tg2} onChange={handleInputChange} className={inputClasses} /></FormGroup>
+                                    <FormGroup label="TG3"><input type="number" name="counts.tg3" value={state.counts.tg3} onChange={handleInputChange} className={inputClasses} /></FormGroup>
+                                    <FormGroup label="TG4"><input type="number" name="counts.tg4" value={state.counts.tg4} onChange={handleInputChange} className={inputClasses} /></FormGroup>
+                                </div>
+                            </Accordion>
+
+                            <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>Generate Serials</button>
+                                    <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset Rules</button>
+                                </div>
+                                <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center">{statusMessage}</div>
+                                {isGenerating && 
+                                    <div className="w-full bg-gray-700 rounded-full h-2.5">
+                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                                    </div>
+                                }
+                                {validationResult && <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center">{validationResult}</div>}
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>High-Value Part Size Range</label>
-                            <div class="grid-group">
-                                 <input type="number" id="min-part-size" value="4" min="2" max="10" title="The smallest pattern size to scan for.">
-                                 <input type="number" id="max-part-size" value="8" min="3" max="15" title="The largest pattern size to scan for.">
-                            </div>
+
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 flex flex-col h-full min-h-[80vh]">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold">YAML Output</h2>
+                                <div className="flex gap-2">
+                                    <button onClick={copyToClipboard} className={btnClasses.tertiary}>Copy</button>
+                                    <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
+                                </div>
+                             </div>
+                             <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="target-tail-offset">Final Tail Length Offset</label>
-                            <input type="number" id="target-tail-offset" value="0" title="Offset relative to base seed's tail length. E.g., -5 makes it shorter, 10 makes it longer.">
-                        </div>
-                    </div>
-                </details>
-
-                <details>
-                    <summary>🔢 Output Counts</summary>
-                    <div class="accordion-content">
-                        <div class="grid-group">
-                            <div class="form-group"><label for="new-count">NEW (0)</label><input type="number" id="new-count" value="10000" min="0"></div>
-                            <div class="form-group"><label for="tg1-count">TG1 (17)</label><input type="number" id="tg1-count" value="0" min="0"></div>
-                            <div class="form-group"><label for="tg2-count">TG2 (33)</label><input type="number" id="tg2-count" value="0" min="0"></div>
-                            <div class="form-group"><label for="tg3-count">TG3 (65)</label><input type="number" id="tg3-count" value="0" min="0"></div>
-                            <div class="form-group"><label for="tg4-count">TG4 (129)</label><input type="number" id="tg4-count" value="0" min="0"></div>
-                        </div>
-                    </div>
-                </details>
-
-            </div>
-            
-            <div class="actions-panel">
-                <div class="button-bar">
-                    <button id="generate-btn" onclick="startGeneration()">Generate Serials</button>
-                    <button id="reset-btn" onclick="resetFormWithConfirm()">Reset Rules</button>
+                    </main>
                 </div>
-                <div id="status-message">Ready to generate.</div>
-                <div class="progress-container hidden" id="progress-container">
-                    <div class="progress-bar" id="progress-bar"></div>
-                </div>
-                <div id="validation-output" class="hidden"></div>
-            </div>
-        </div>
-        
-        <div class="output-panel">
-            <div class="output-header">
-                <h2>YAML Output</h2>
-                <div class="output-actions">
-                    <button id="copy-btn" onclick="copyToClipboard()"><span id="copy-text">Copy</span></button>
-                    <button id="download-btn" onclick="downloadYAML()"><span id="download-text">Download</span></button>
-                </div>
-            </div>
-            <textarea id="output-yaml" readonly placeholder="Generated YAML will appear here..."></textarea>
-        </div>
-
-    </main>
-
-<script>
-    const worker = new Worker('generator.worker.js');
-
-    // --- REPOSITORY STATE MANAGEMENT ---
-    let repositoryData = { class_mod: "", shield: "", ordnance: "", enhancement: "", gun: "", repkit: "" };
-    let currentRepo = 'class_mod';
-
-    // --- UI ELEMENT SELECTORS ---
-    const legendaryChanceSlider = document.getElementById('legendary-chance');
-    const legendaryChanceValue = document.getElementById('legendary-chance-value');
-
-    // --- MAIN EXECUTION START ---
-    function startGeneration() {
-        repositoryData[currentRepo] = document.getElementById('repo-editor').value;
-
-        const btn = document.getElementById('generate-btn');
-        const statusMessage = document.getElementById('status-message');
-        const validationOutput = document.getElementById('validation-output');
-        
-        btn.disabled = true;
-        document.getElementById('output-yaml').value = "";
-        document.getElementById('progress-container').classList.remove('hidden');
-        validationOutput.textContent = '';
-        validationOutput.classList.add('hidden');
-        statusMessage.classList.remove('error');
-
-        const config = {
-            seed: document.getElementById('seed').value, 
-            itemType: document.getElementById('item-type').value,
-            repositories: repositoryData,
-            
-            newCount: parseInt(document.getElementById('new-count').value), 
-            tg1Count: parseInt(document.getElementById('tg1-count').value), 
-            tg2Count: parseInt(document.getElementById('tg2-count').value), 
-            tg3Count: parseInt(document.getElementById('tg3-count').value), 
-            tg4Count: parseInt(document.getElementById('tg4-count').value),
-            
-            targetOffset: parseInt(document.getElementById('target-tail-offset').value),
-            minProtectedPercent: parseInt(document.getElementById('min-protected-percent').value), 
-            maxProtectedPercent: parseInt(document.getElementById('max-protected-percent').value),
-            minChunkSize: parseInt(document.getElementById('min-chunk-size').value), 
-            maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), 
-            targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
-            minPartSize: parseInt(document.getElementById('min-part-size').value),
-            maxPartSize: parseInt(document.getElementById('max-part-size').value),
-            legendaryChance: parseInt(legendaryChanceSlider.value),
-            
-            gpuBatchSize: 250000,
-            debugMode: true // Keep validation on by default for now
+            );
         };
-        
-        const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
-        if (totalRequested === 0) {
-            handleError("Please request at least one serial to generate.");
-            return;
-        }
-        
-        statusMessage.textContent = `Sending job to background thread...`;
-        updateProgress(0, totalRequested);
-        worker.postMessage({ type: 'generate', payload: config });
-    }
-    
-    // --- WORKER MESSAGE HANDLING ---
-    worker.onmessage = function(e) {
-        const { type, payload } = e.data;
-        const statusMessage = document.getElementById('status-message');
-        
-        switch(type) {
-            case 'progress':
-                updateProgress(payload.processed, payload.total);
-                break;
-            case 'complete':
-                finalizeGeneration(payload);
-                break;
-            case 'warning':
-                statusMessage.textContent = `Warning: ${payload}`;
-                break;
-            case 'error':
-                handleError(payload.message);
-                break;
-        }
-    };
-    
-    function updateProgress(processed, total) {
-        const progressBar = document.getElementById('progress-bar');
-        const percent = total > 0 ? Math.min(100, (processed / total) * 100) : 0;
-        progressBar.style.width = `${percent}%`;
-        document.getElementById('status-message').textContent = `Generating... ${processed.toLocaleString()} / ${total.toLocaleString()}`;
-    }
 
-    function finalizeGeneration(payload) {
-        document.getElementById('output-yaml').value = payload.yaml;
-        document.getElementById('status-message').textContent = `✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`;
-        document.getElementById('progress-container').classList.add('hidden');
-        document.getElementById('generate-btn').disabled = false;
-
-        if (payload.validationResult) {
-            const validationOutput = document.getElementById('validation-output');
-            validationOutput.textContent = payload.validationResult;
-            validationOutput.classList.remove('hidden');
-        }
-    }
-
-    function handleError(message) {
-        const statusMessage = document.getElementById('status-message');
-        statusMessage.textContent = `❌ ERROR: ${message}`;
-        statusMessage.classList.add('error');
-        document.getElementById('progress-container').classList.add('hidden');
-        document.getElementById('generate-btn').disabled = false;
-    }
-    
-    // --- UTILITY FUNCTIONS ---
-    async function copyToClipboard() {
-        const textarea = document.getElementById('output-yaml');
-        const copyText = document.getElementById('copy-text');
-        const originalText = copyText.textContent;
-        if (!textarea.value) return;
-        try {
-            await navigator.clipboard.writeText(textarea.value);
-            copyText.textContent = "Copied!";
-        } catch (err) {
-            copyText.textContent = "Failed!";
-        } finally {
-            setTimeout(() => { copyText.textContent = originalText; }, 2000);
-        }
-    }
-
-    function downloadYAML() {
-        const yamlContent = document.getElementById('output-yaml').value;
-        const downloadText = document.getElementById('download-text');
-        const originalText = downloadText.textContent;
-        if (!yamlContent) return;
-        try {
-            const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "generated_serials.yaml";
-            link.click();
-            URL.revokeObjectURL(link.href);
-            downloadText.textContent = "Downloaded!";
-        } catch (err) {
-            downloadText.textContent = "Failed!";
-        } finally {
-            setTimeout(() => { downloadText.textContent = originalText; }, 2000);
-        }
-    }
-    
-    function resetForm() {
-        document.getElementById('target-tail-offset').value = 0;
-        document.getElementById('min-protected-percent').value = 100;
-        document.getElementById('max-protected-percent').value = 100;
-        document.getElementById('min-chunk-size').value = 3;
-        document.getElementById('max-chunk-size').value = 7;
-        document.getElementById('target-chunk-size').value = 5;
-        document.getElementById('min-part-size').value = 4;
-        document.getElementById('max-part-size').value = 8;
-        legendaryChanceSlider.value = 100;
-        legendaryChanceValue.textContent = '100%';
-        document.getElementById('status-message').textContent = "Mutation rules reset to defaults.";
-    }
-
-    function resetFormWithConfirm() {
-        if (confirm("Are you sure you want to reset all mutation rules to their defaults?")) {
-            resetForm();
-        }
-    }
-
-    // --- INITIALIZATION ---
-    window.onload = () => {
-        const itemTypeSelector = document.getElementById('item-type');
-        const repoEditor = document.getElementById('repo-editor');
-
-        function switchRepoView(event) {
-            const newRepo = event.target.value;
-            repositoryData[currentRepo] = repoEditor.value;
-            repoEditor.value = repositoryData[newRepo] || '';
-            currentRepo = newRepo;
-        }
-        itemTypeSelector.addEventListener('change', switchRepoView);
-
-        legendaryChanceSlider.addEventListener('input', (e) => {
-            legendaryChanceValue.textContent = `${e.target.value}%`;
-        });
-
-        if (document.getElementById('seed').value === '') {
-            console.log("First visit detected. Setting form defaults.");
-            document.getElementById('seed').value = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
-            document.getElementById('new-count').value = 10000;
-            for (const key in repositoryData) { repositoryData[key] = ""; }
-            repoEditor.value = "";
-            resetForm();
-            document.getElementById('status-message').textContent = "Defaults set. Ready to generate.";
-        } else {
-            console.log("Restored previous form state.");
-            currentRepo = itemTypeSelector.value;
-            repositoryData[currentRepo] = repoEditor.value;
-            document.getElementById('status-message').textContent = "Settings restored. Ready to generate.";
-        }
-    };
-</script>
-
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
 </body>
 </html>
