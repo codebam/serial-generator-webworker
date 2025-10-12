@@ -1,5 +1,5 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
-// Definitive version with the corrected PROTECTED START calculation and robust mutation logic.
+// Definitive version with multi-size pattern detection and robust mutation logic.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
@@ -23,9 +23,39 @@ function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Ma
 function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; const hdr = serial.substring(0, 10); return [hdr, serial.substring(10)]; }
-function extractHighValueParts(repoTails, partSize) { const highValueParts = new Set(); const frequencyMap = new Map(); for (const tail of repoTails) { for (let i = 0; i <= tail.length - (partSize * 2); i++) { const fragment1 = tail.substring(i, i + partSize); const fragment2 = tail.substring(i + partSize, i + (partSize * 2)); if (fragment1 === fragment2) highValueParts.add(fragment1); } for (let i = 0; i <= tail.length - partSize; i++) { const fragment = tail.substring(i, i + partSize); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } const sortedByFrequency = [...frequencyMap.entries()].sort((a, b) => b[1] - a[1]); sortedByFrequency.slice(0, 20).forEach(entry => highValueParts.add(entry[0])); return Array.from(highValueParts); }
 
-// --- INTELLIGENT MUTATION ALGORITHMS v16.0 ---
+// --- THIS IS THE CORRECTED FUNCTION ---
+// It now scans for patterns across a RANGE of sizes, making it far more effective.
+function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
+    const frequencyMap = new Map();
+
+    // Step 1: Scan for parts of various sizes within the specified range.
+    for (let size = minPartSize; size <= maxPartSize; size++) {
+        for (const tail of repoTails) {
+            if (tail.length < size) continue; // Skip tails shorter than the current part size
+            for (let i = 0; i <= tail.length - size; i++) {
+                const fragment = tail.substring(i, i + size);
+                frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
+            }
+        }
+    }
+
+    // Step 2: Filter for parts that appeared more than once.
+    const repeatedParts = [...frequencyMap.entries()]
+        .filter(([part, count]) => count > 1)
+        .sort((a, b) => {
+            // Step 3: Sort results. Prioritize by frequency, then by length (longer is better).
+            if (b[1] !== a[1]) {
+                return b[1] - a[1]; // Higher frequency first
+            }
+            return b[0].length - a[0].length; // Longer part first
+        });
+
+    return repeatedParts.map(entry => entry[0]);
+}
+
+
+// --- INTELLIGENT MUTATION ALGORITHMS v17.0 ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) { return startPart.substring(0, finalLength); } let padding = ''; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } return startPart + padding; }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) { let childTail = baseTail; const mutableStart = protectedStartLength; const childMutableLength = childTail.length - mutableStart; const parentMutableLength = parentTail.length - protectedStartLength; const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk)); if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) { const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize); const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize); const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length); childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length); } if (childTail.length < finalLength) { let padding = ''; const paddingLength = finalLength - childTail.length; for (let i = 0; i < paddingLength; i++) { padding += randomChoice(ALPHABET); } childTail += padding; } else { childTail = childTail.substring(0, finalLength); } return childTail; }
 
@@ -38,13 +68,17 @@ self.onmessage = async function(e) {
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
         if (totalRequested === 0) { self.postMessage({ type: 'complete', payload: { yaml: 'No items requested.', uniqueCount: 0, totalRequested: 0 }}); return; }
         await generateRandomNumbersOnGPU(config.gpuBatchSize);
-        
         const seedInput = config.seed || DEFAULT_SEED;
         const [baseHeader, baseTail] = splitHeaderTail(seedInput);
         const selectedRepoTails = config.repositories[config.itemType].split(/[\s\n]+/).filter(s => s.startsWith('@U')).map(s => splitHeaderTail(s)[1]);
         if (selectedRepoTails.length === 0) { self.postMessage({ type: 'warning', payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed as parent.` }); selectedRepoTails.push(baseTail); }
         
-        const highValueParts = extractHighValueParts(selectedRepoTails, config.partSize);
+        // --- THIS IS THE CORRECTED CALL ---
+        // We now use a range for part sizes for robust detection.
+        const minPartSize = config.minPartSize || 4;
+        const maxPartSize = config.maxPartSize || 8;
+        const highValueParts = extractHighValueParts(selectedRepoTails, minPartSize, maxPartSize);
+        
         const legendaryStackingChance = config.legendaryChance / 100.0;
 
         const serialsToGenerate = [];
@@ -65,17 +99,12 @@ self.onmessage = async function(e) {
             let innerAttempts = 0;
             do {
                 const parentTail = randomChoice(selectedRepoTails);
-                
-                // --- THIS IS THE CRITICAL FIX ---
-                // The protected length is NOW and FOREVER based on the BASE tail's length.
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
 
-                // The dynamic length is now correctly calculated based on the BASE seed, not the average.
-                // **FIX:** Ensure the final target length is never smaller than the protected length.
                 let dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
                 dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
-                
+
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
 
@@ -87,22 +116,13 @@ self.onmessage = async function(e) {
                 
                 if (((item.tg === "TG3" && getRandom() < legendaryStackingChance) || item.tg === "TG4") && highValueParts.length > 0) {
                     const part = randomChoice(highValueParts);
-                    const repetitions = randomInt(2, 5); // Repeat the part 2 to 5 times for a strong pattern.
+                    const repetitions = randomInt(2, 5);
                     const repeatedBlock = part.repeat(repetitions);
-
-                    // Calculate the total space available for mutation after the protected prefix.
                     const availableMutableSpace = dynamicTargetLength - protectedStartLength;
 
-                    // Only proceed if there's enough space for at least one instance of the part.
-                    if (availableMutableSpace > part.length) {
-                        // Truncate the repeated block if it's longer than the available mutable space.
+                    if (availableMutableSpace >= part.length) { 
                         const finalRepeatedBlock = repeatedBlock.substring(0, availableMutableSpace);
-
-                        // Determine the length of the original part of the tail that we will keep.
                         const prefixLength = dynamicTargetLength - finalRepeatedBlock.length;
-
-                        // Construct the new tail by taking the prefix and appending the repeating block.
-                        // This effectively overwrites the end of the original mutated tail.
                         mutatedTail = mutatedTail.substring(0, prefixLength) + finalRepeatedBlock;
                     }
                 }
@@ -119,9 +139,31 @@ self.onmessage = async function(e) {
             }
             if (i > 0 && i % 500 === 0) { self.postMessage({ type: 'progress', payload: { processed: i, total: totalRequested } }); }
         }
-        
+
+        let validationResult = null;
+        if (config.debugMode) {
+            const legendaryItems = generatedSerials.filter(item => item.state_flag === TG_FLAGS.TG3 || item.state_flag === TG_FLAGS.TG4);
+            let successCount = 0;
+
+            if (legendaryItems.length > 0 && highValueParts.length > 0) {
+                legendaryItems.forEach(item => {
+                    const tail = splitHeaderTail(item.serial)[1];
+                    if (highValueParts.some(part => tail.includes(part))) {
+                        successCount++;
+                    }
+                });
+                const successRate = legendaryItems.length > 0 ? ((successCount / legendaryItems.length) * 100).toFixed(1) : 0;
+                validationResult = `✅ Validation: ${successCount} of ${legendaryItems.length} legendary items (${successRate}%) contained a high-value part.`;
+            } else if (legendaryItems.length > 0) {
+                validationResult = "⚠️ Validation: No high-value parts were extracted from the repo. Try using a repo with more repeating patterns.";
+            } else {
+                validationResult = "ℹ️ Validation: No legendary items were generated, so no validation was performed.";
+            }
+        }
+
         const lines = ["state:", "  inventory:", "    items:", "      backpack:"];
         generatedSerials.forEach(item => { lines.push(`        slot_${item.slot}:`); lines.push(`          serial: '${item.serial}'`); if (item.flag === 1) lines.push(`          flags: 1`); if (item.state_flag !== 0) lines.push(`          state_flags: ${item.state_flag}`); });
-        self.postMessage({ type: 'complete', payload: { yaml: lines.join('\n'), uniqueCount: generatedSerials.length, totalRequested: totalRequested }});
+        
+        self.postMessage({ type: 'complete', payload: { yaml: lines.join('\n'), uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: validationResult }});
     } catch (error) { console.error("Worker Error:", error); self.postMessage({ type: 'error', payload: { message: error.message } }); }
 };

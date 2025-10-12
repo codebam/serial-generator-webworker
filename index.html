@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine (v8.3 - Tabbed Repos)</title>
+    <title>Serial Mutation Engine (v8.5 - Range Scanning)</title>
     <style>
         :root { --bg-deep-blue: #0d1117; --bg-panel: #161b22; --border-color: #30363d; --text-primary: #c9d1d9; --text-secondary: #8b949e; --accent-orange: #f78166; --accent-cyan: #79c0ff; --accent-green: #56d364; --accent-red: #ff7b72; --accent-gray: #6e7681; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 2rem; background-color: var(--bg-deep-blue); color: var(--text-primary); }
@@ -16,7 +16,6 @@
         input, textarea, select { width: 100%; padding: 0.75rem; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-deep-blue); color: var(--text-primary); font-family: "SF Mono", "Consolas", "Roboto Mono", monospace; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
         input[type="range"] { padding: 0; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.4); }
-        /* The single repo editor now has more height */
         #repo-editor { resize: vertical; min-height: 150px; }
         #output-yaml { min-height: 400px; flex-grow: 1; }
         .grid-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
@@ -35,6 +34,15 @@
         .progress-container { width: 100%; background-color: var(--bg-deep-blue); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
         .progress-bar { height: 24px; background-color: var(--accent-cyan); width: 0%; text-align: center; line-height: 24px; color: var(--bg-deep-blue); font-weight: 600; transition: width 0.3s; }
         .hidden { display: none; }
+        .debug-switch-container { display: flex; align-items: center; margin-bottom: 1.5rem; padding: 1rem; background-color: rgba(247, 129, 102, 0.1); border: 1px solid var(--accent-orange); border-radius: 6px; }
+        .switch-label { margin-left: 10px; font-size: 0.9em; user-select: none; font-weight: 600; color: var(--accent-orange); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--accent-gray); transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-orange); }
+        input:checked + .slider:before { transform: translateX(22px); }
+        #validation-output { margin-top: 1rem; padding: 10px; border-radius: 6px; background-color: #1c2128; font-family: monospace; font-size: 0.9em; color: var(--accent-green); border: 1px solid var(--border-color); }
     </style>
 </head>
 <body>
@@ -64,10 +72,8 @@
             </div>
             
             <div class="form-section">
-                <h2>Final Tail Length Offsets (Relative to Parents)</h2>
+                <h2>Final Tail Length Offset</h2>
                 <div class="grid-group">
-                    <div class="form-group"><label for="min-tail-offset">Min Offset</label><input type="number" id="min-tail-offset" value="0"></div>
-                    <div class="form-group"><label for="max-tail-offset">Max Offset</label><input type="number" id="max-tail-offset" value="5"></div>
                     <div class="form-group"><label for="target-tail-offset">Target Offset</label><input type="number" id="target-tail-offset" value="0"></div>
                 </div>
             </div>
@@ -86,6 +92,15 @@
                     <div class="form-group"><label for="min-chunk-size">Min Chunk Size</label><input type="number" id="min-chunk-size" value="3"></div>
                     <div class="form-group"><label for="max-chunk-size">Max Chunk Size</label><input type="number" id="max-chunk-size" value="7"></div>
                     <div class="form-group"><label for="target-chunk-size">Target Chunk Size</label><input type="number" id="target-chunk-size" value="5"></div>
+
+                    <div class="form-group" style="grid-column: 1 / -1; border: 1px solid var(--accent-green); padding: 1rem; border-radius: 6px;">
+                        <label>High-Value Part Size Range (for TG3/4)</label>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="number" id="min-part-size" value="4" min="2" max="10" title="The smallest pattern size to scan for in the repository.">
+                            <span style="color: var(--text-secondary);">to</span>
+                            <input type="number" id="max-part-size" value="8" min="3" max="15" title="The largest pattern size to scan for in the repository.">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -103,6 +118,16 @@
             <div class="status-bar" id="status-message">Ready to generate.</div>
             <div class="progress-container hidden" id="progress-container">
                 <div class="progress-bar" id="progress-bar">0%</div>
+            </div>
+            
+            <div id="validation-output" class="hidden"></div>
+
+            <div class="debug-switch-container">
+              <label class="switch">
+                <input type="checkbox" id="debug-switch">
+                <span class="slider"></span>
+              </label>
+              <label for="debug-switch" class="switch-label">Enable Output Validation</label>
             </div>
             
             <div class="button-bar">
@@ -129,40 +154,38 @@
     const worker = new Worker('generator.worker.js');
 
     // --- REPOSITORY STATE MANAGEMENT ---
-    let repositoryData = {
-        class_mod: "",
-        shield: "",
-        ordnance: "",
-        enhancement: "",
-        gun: "",
-        repkit: ""
-    };
-
-    let currentRepo = 'class_mod'; // The currently viewed repository
-
-    // --- MESSAGE HANDLING ---
-    worker.onmessage = function(e) { /* ... same as before ... */ };
-    function updateProgress(processed, total) { /* ... same as before ... */ }
-    function finalizeGeneration(yaml, uniqueCount, totalRequested) { /* ... same as before ... */ }
-    function handleError(message) { /* ... same as before ... */ }
+    let repositoryData = { class_mod: "", shield: "", ordnance: "", enhancement: "", gun: "", repkit: "" };
+    let currentRepo = 'class_mod';
 
     // --- MAIN EXECUTION START ---
     function startGeneration() {
-        // First, ensure the current content of the editor is saved before generating
         const repoEditor = document.getElementById('repo-editor');
         repositoryData[currentRepo] = repoEditor.value;
 
         const btn = document.getElementById('generate-btn'); btn.disabled = true; document.getElementById('output-yaml').value = ""; document.getElementById('progress-container').classList.remove('hidden');
         
+        const validationOutput = document.getElementById('validation-output');
+        validationOutput.textContent = '';
+        validationOutput.classList.add('hidden');
+        const debugMode = document.getElementById('debug-switch').checked;
+        
+        // --- UPDATED CONFIG OBJECT ---
         const config = {
             seed: document.getElementById('seed').value, 
-            itemType: document.getElementById('item-type').value, // This still correctly indicates the target for mutation
+            itemType: document.getElementById('item-type').value,
             newCount: parseInt(document.getElementById('new-count').value), tg1Count: parseInt(document.getElementById('tg1-count').value), tg2Count: parseInt(document.getElementById('tg2-count').value), tg3Count: parseInt(document.getElementById('tg3-count').value), tg4Count: parseInt(document.getElementById('tg4-count').value),
-            repositories: repositoryData, // Send the entire data object to the worker
-            minOffset: parseInt(document.getElementById('min-tail-offset').value), maxOffset: parseInt(document.getElementById('max-tail-offset').value), targetOffset: parseInt(document.getElementById('target-tail-offset').value),
+            repositories: repositoryData,
+            targetOffset: parseInt(document.getElementById('target-tail-offset').value),
             minProtectedPercent: parseInt(document.getElementById('min-protected-percent').value), maxProtectedPercent: parseInt(document.getElementById('max-protected-percent').value),
             minChunkSize: parseInt(document.getElementById('min-chunk-size').value), maxChunkSize: parseInt(document.getElementById('max-chunk-size').value), targetChunkSize: parseInt(document.getElementById('target-chunk-size').value),
-            gpuBatchSize: 250000
+            
+            // --- NEW: Read part size range from the new inputs ---
+            minPartSize: parseInt(document.getElementById('min-part-size').value),
+            maxPartSize: parseInt(document.getElementById('max-part-size').value),
+            legendaryChance: 100, // Assuming 100% for now, can be added as a UI element later
+            
+            gpuBatchSize: 250000,
+            debugMode: debugMode
         };
         
         const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
@@ -171,90 +194,74 @@
         worker.postMessage({ type: 'generate', payload: config });
     }
     
-    // --- UI UTILITIES ---
-    async function copyToClipboard() { /* ... same as before ... */ }
-    function downloadYAML() { /* ... same as before ... */ }
+    // --- WORKER MESSAGE HANDLING ---
+    worker.onmessage = function(e) {
+        const { type, payload } = e.data;
+        switch(type) {
+            case 'progress':
+                updateProgress(payload.processed, payload.total);
+                break;
+            case 'complete':
+                finalizeGeneration(payload);
+                break;
+            case 'warning':
+                document.getElementById('status-message').textContent = `Warning: ${payload}`;
+                break;
+            case 'error':
+                handleError(payload.message);
+                break;
+        }
+    };
+    
+    function updateProgress(processed, total) {
+        const progressBar = document.getElementById('progress-bar');
+        const percent = total > 0 ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
+        progressBar.style.width = `${percent}%`;
+        progressBar.textContent = `${percent}%`;
+        document.getElementById('status-message').textContent = `Generating... Processing ${processed.toLocaleString()} of ${total.toLocaleString()} serials.`;
+    }
 
+    function finalizeGeneration(payload) {
+        document.getElementById('output-yaml').value = payload.yaml;
+        document.getElementById('status-message').textContent = `✅ Generation Complete! Wrote ${payload.uniqueCount.toLocaleString()} unique serials. (Requested: ${payload.totalRequested.toLocaleString()}).`;
+        document.getElementById('progress-container').classList.add('hidden');
+        document.getElementById('generate-btn').disabled = false;
+
+        if (payload.validationResult) {
+            const validationOutput = document.getElementById('validation-output');
+            validationOutput.textContent = payload.validationResult;
+            validationOutput.classList.remove('hidden');
+        }
+    }
+
+    function handleError(message) {
+        console.error("Worker Error:", message);
+        document.getElementById('status-message').textContent = `❌ ERROR: ${message}`;
+        document.getElementById('progress-container').classList.add('hidden');
+        document.getElementById('generate-btn').disabled = false;
+    }
+    
+    // --- UTILITY FUNCTIONS ---
+    async function copyToClipboard() { const textarea = document.getElementById('output-yaml'); const copyText = document.getElementById('copy-text'); const originalText = copyText.textContent; const yamlContent = textarea.value; if (!yamlContent) return alert("There is no YAML content to copy."); if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(yamlContent); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Copy Failed"; alert("Could not copy text."); } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } else { textarea.select(); try { document.execCommand('copy'); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Error"; } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } }
+    function downloadYAML() { const yamlContent = document.getElementById('output-yaml').value; const downloadText = document.getElementById('download-text'); const originalText = downloadText.textContent; if (!yamlContent) return alert("There is no YAML content to download."); try { const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", "generated_serials.yaml"); document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); downloadText.textContent = "Downloaded!"; } catch (err) { downloadText.textContent = "Error"; } finally { setTimeout(() => { downloadText.textContent = originalText; }, 2000); } }
+    
+    // --- UPDATED RESET FUNCTION ---
     function resetForm() {
-        const DEFAULT_SEED = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
-        
-        // Non-destructive reset of algorithm parameters only
-        document.getElementById('min-tail-offset').value = 3;
-        document.getElementById('max-tail-offset').value = 10;
-        document.getElementById('target-tail-offset').value = 10;
+        document.getElementById('target-tail-offset').value = 0;
         document.getElementById('min-protected-percent').value = 100;
         document.getElementById('max-protected-percent').value = 100;
         document.getElementById('min-chunk-size').value = 3;
         document.getElementById('max-chunk-size').value = 7;
         document.getElementById('target-chunk-size').value = 5;
-        
+        // --- NEW: Reset part size inputs ---
+        document.getElementById('min-part-size').value = 4;
+        document.getElementById('max-part-size').value = 8;
         document.getElementById('status-message').textContent = "Algorithm settings have been reset to their defaults.";
     }
+
+    function resetFormWithConfirm() { if (confirm("Are you sure you want to reset the algorithm's Tuning and Offset settings to their defaults? Your serials and counts will NOT be changed.")) { resetForm(); } }
     
-    function resetFormWithConfirm() { 
-        if (confirm("Are you sure you want to reset the algorithm's Tuning and Offset settings to their defaults? Your serials and counts will NOT be changed.")) {
-            resetForm();
-        } 
-    }
-    
-    // --- INITIALIZATION AND EVENT LISTENERS ---
-    window.onload = () => {
-        const itemTypeSelector = document.getElementById('item-type');
-        const repoEditor = document.getElementById('repo-editor');
-
-        // Function to handle swapping repo content
-        function switchRepoView(event) {
-            const newRepo = event.target.value;
-            
-            // 1. Save the current text into our data object
-            repositoryData[currentRepo] = repoEditor.value;
-            
-            // 2. Load the new text from our data object
-            repoEditor.value = repositoryData[newRepo];
-
-            // 3. Update the current view tracker
-            currentRepo = newRepo;
-        }
-
-        // Attach the event listener to the dropdown
-        itemTypeSelector.addEventListener('change', switchRepoView);
-
-        // On first visit, set up the entire form with defaults.
-        // On refresh, browser state restoration will handle most fields.
-        if (document.getElementById('seed').value === '') {
-            console.log("First visit detected. Setting form defaults.");
-            
-            // Apply all defaults
-            document.getElementById('item-type').value = 'class_mod';
-            document.getElementById('seed').value = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U";
-            document.getElementById('new-count').value = 10000;
-            
-            // Clear all repo data
-            for (const key in repositoryData) {
-                repositoryData[key] = "";
-            }
-            // Sync the (now empty) editor with the current view
-            repoEditor.value = repositoryData['class_mod'];
-
-            resetForm(); // Also apply the default tuning parameters
-            document.getElementById('status-message').textContent = "Form set to defaults. Ready to generate 10,000 NEW items.";
-        } else {
-            console.log("Browser has restored form state.");
-            // Restore our JS repository object from the browser's saved textarea state
-            // (This is a failsafe in case the browser only restores the visible textarea)
-            currentRepo = itemTypeSelector.value;
-            repositoryData[currentRepo] = repoEditor.value;
-            document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate.";
-        }
-    };
-
-    // --- OMITTED FOR BREVITY ---
-    worker.onmessage = function(e) { const { type, payload } = e.data; switch(type) { case 'progress': updateProgress(payload.processed, payload.total); break; case 'complete': finalizeGeneration(payload.yaml, payload.uniqueCount, payload.totalRequested); break; case 'warning': document.getElementById('status-message').textContent = `Warning: ${payload}`; break; case 'error': handleError(payload.message); break; } };
-    function updateProgress(processed, total) { const progressBar = document.getElementById('progress-bar'); const percent = total > 0 ? Math.min(100, Math.floor((processed / total) * 100)) : 0; progressBar.style.width = `${percent}%`; progressBar.textContent = `${percent}%`; document.getElementById('status-message').textContent = `Generating... Processing ${processed.toLocaleString()} of ${total.toLocaleString()} serials.`; }
-    function finalizeGeneration(yaml, uniqueCount, totalRequested) { document.getElementById('output-yaml').value = yaml; document.getElementById('status-message').textContent = `✅ Generation Complete! Wrote ${uniqueCount.toLocaleString()} unique serials. (Requested: ${totalRequested.toLocaleString()}).`; document.getElementById('progress-container').classList.add('hidden'); document.getElementById('generate-btn').disabled = false; }
-    function handleError(message) { console.error("Worker Error:", message); document.getElementById('status-message').textContent = `❌ ERROR: ${message}`; document.getElementById('progress-container').classList.add('hidden'); document.getElementById('generate-btn').disabled = false; }
-    async function copyToClipboard() { const textarea = document.getElementById('output-yaml'); const copyText = document.getElementById('copy-text'); const originalText = copyText.textContent; const yamlContent = textarea.value; if (!yamlContent) return alert("There is no YAML content to copy."); if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(yamlContent); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Copy Failed"; alert("Could not copy text."); } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } else { textarea.select(); try { document.execCommand('copy'); copyText.textContent = "Copied!"; } catch (err) { copyText.textContent = "Error"; } finally { setTimeout(() => { copyText.textContent = originalText; }, 2000); } } }
-    function downloadYAML() { const yamlContent = document.getElementById('output-yaml').value; const downloadText = document.getElementById('download-text'); const originalText = downloadText.textContent; if (!yamlContent) return alert("There is no YAML content to download."); try { const blob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", "generated_serials.yaml"); document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); downloadText.textContent = "Downloaded!"; } catch (err) { downloadText.textContent = "Error"; } finally { setTimeout(() => { downloadText.textContent = originalText; }, 2000); } }
+    window.onload = () => { const itemTypeSelector = document.getElementById('item-type'); const repoEditor = document.getElementById('repo-editor'); function switchRepoView(event) { const newRepo = event.target.value; repositoryData[currentRepo] = repoEditor.value; repoEditor.value = repositoryData[newRepo]; currentRepo = newRepo; } itemTypeSelector.addEventListener('change', switchRepoView); if (document.getElementById('seed').value === '') { console.log("First visit detected. Setting form defaults."); document.getElementById('item-type').value = 'class_mod'; document.getElementById('seed').value = "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U"; document.getElementById('new-count').value = 10000; for (const key in repositoryData) { repositoryData[key] = ""; } repoEditor.value = repositoryData['class_mod']; resetForm(); document.getElementById('status-message').textContent = "Form set to defaults. Ready to generate 10,000 NEW items."; } else { console.log("Browser has restored form state."); currentRepo = itemTypeSelector.value; repositoryData[currentRepo] = repoEditor.value; document.getElementById('status-message').textContent = "Restored previous settings. Ready to generate."; } };
 </script>
 
 </body>
