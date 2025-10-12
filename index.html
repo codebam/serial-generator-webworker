@@ -89,7 +89,9 @@
                     legendaryPerkChance: 50,
                     legendaryPerkRepo: "",
                     legendaryPerkMin: 30,
-                    legendaryPerkMax: 50
+                    legendaryPerkMax: 50,
+                    legendaryPerkExtractionMin: 25,
+                    legendaryPerkExtractionMax: 75
                 }
             };
             
@@ -166,6 +168,8 @@
                     legendaryPerkRepo: state.rules.legendaryPerkRepo,
                     legendaryPerkMin: parseInt(state.rules.legendaryPerkMin),
                     legendaryPerkMax: parseInt(state.rules.legendaryPerkMax),
+                    legendaryPerkExtractionMin: parseInt(state.rules.legendaryPerkExtractionMin),
+                    legendaryPerkExtractionMax: parseInt(state.rules.legendaryPerkExtractionMax),
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -241,6 +245,17 @@
                                 <FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
                                     <input type="range" name="rules.legendaryChance" min="0" max="100" value={state.rules.legendaryChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
                                 </FormGroup>
+                                <FormGroup label="High-Value Part Size Range">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" name="rules.minPart" value={state.rules.minPart} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.maxPart" value={state.rules.maxPart} onChange={handleInputChange} className={inputClasses} />
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label="Final Tail Length Offset">
+                                    <input type="number" name="rules.targetOffset" value={state.rules.targetOffset} onChange={handleInputChange} className={inputClasses} />
+                                </FormGroup>
+                            </Accordion>
+                            <Accordion title="✨ Legendary Perk Rules">
                                 <FormGroup label={`Legendary Perk Chance (${state.rules.legendaryPerkChance}%)`}>
                                     <input type="range" name="rules.legendaryPerkChance" min="0" max="100" value={state.rules.legendaryPerkChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
                                 </FormGroup>
@@ -250,14 +265,11 @@
                                         <input type="number" name="rules.legendaryPerkMax" value={state.rules.legendaryPerkMax} onChange={handleInputChange} className={inputClasses} />
                                     </div>
                                 </FormGroup>
-                                <FormGroup label="High-Value Part Size Range">
+                                <FormGroup label="Legendary Perk Extraction Range (%)">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.minPart" value={state.rules.minPart} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.maxPart" value={state.rules.maxPart} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.legendaryPerkExtractionMin" value={state.rules.legendaryPerkExtractionMin} onChange={handleInputChange} className={inputClasses} />
+                                        <input type="number" name="rules.legendaryPerkExtractionMax" value={state.rules.legendaryPerkExtractionMax} onChange={handleInputChange} className={inputClasses} />
                                     </div>
-                                </FormGroup>
-                                <FormGroup label="Final Tail Length Offset">
-                                    <input type="number" name="rules.targetOffset" value={state.rules.targetOffset} onChange={handleInputChange} className={inputClasses} />
                                 </FormGroup>
                             </Accordion>
                             <Accordion title="🔢 Output Counts">
