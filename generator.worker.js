@@ -139,9 +139,25 @@ self.onmessage = async function(e) {
             if (i > 0 && i % 500 === 0) self.postMessage({ type: 'progress', payload: { processed: i + 1, total: totalRequested } });
         }
         
-        const lines = ["state:", "  inventory:", "    items:", "      backpack:"];
-        generatedSerials.forEach(item => { lines.push(`        slot_${item.slot}:`); lines.push(`          serial: '${item.serial}'`); if (item.flag === 1) lines.push(`          flags: 1`); if (item.state_flag !== 0) lines.push(`          state_flags: ${item.state_flag}`); });
-        
-        self.postMessage({ type: 'complete', payload: { yaml: lines.join('\n'), uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: null }});
+        const fullLines = ["state:", "  inventory:", "    items:", "      backpack:"];
+        generatedSerials.forEach(item => { 
+            fullLines.push(`        slot_${item.slot}:`); 
+            fullLines.push(`          serial: '${item.serial}'`); 
+            if (item.flag === 1) fullLines.push(`          flags: 1`); 
+            if (item.state_flag !== 0) fullLines.push(`          state_flags: ${item.state_flag}`); 
+        });
+        const fullYaml = fullLines.join('\n');
+
+        const truncatedSerials = generatedSerials.slice(0, 30000);
+        const truncatedLines = ["state:", "  inventory:", "    items:", "      backpack:"];
+        truncatedSerials.forEach(item => { 
+            truncatedLines.push(`        slot_${item.slot}:`); 
+            truncatedLines.push(`          serial: '${item.serial}'`); 
+            if (item.flag === 1) truncatedLines.push(`          flags: 1`); 
+            if (item.state_flag !== 0) truncatedLines.push(`          state_flags: ${item.state_flag}`); 
+        });
+        const truncatedYaml = truncatedLines.join('\n');
+
+        self.postMessage({ type: 'complete', payload: { yaml: fullYaml, truncatedYaml: truncatedYaml, uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: null }});
     } catch (error) { console.error("Worker Error:", error); self.postMessage({ type: 'error', payload: { message: error.message } }); }
 };

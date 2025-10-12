@@ -107,6 +107,7 @@
             const [progress, setProgress] = useState(0);
             const [isGenerating, setIsGenerating] = useState(false);
             const [outputYaml, setOutputYaml] = useState("");
+            const [fullYaml, setFullYaml] = useState("");
             
             const workerRef = useRef(null);
 
@@ -123,7 +124,8 @@
                                 break;
                             case 'complete':
                                 setIsGenerating(false);
-                                setOutputYaml(payload.yaml);
+                                setOutputYaml(payload.truncatedYaml);
+                                setFullYaml(payload.yaml);
                                 setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
                                 if (payload.validationResult) setValidationResult(payload.validationResult);
                                 break;
@@ -187,10 +189,10 @@
                 }
             };
             
-            const copyToClipboard = async () => { if(outputYaml) await navigator.clipboard.writeText(outputYaml); };
+            const copyToClipboard = async () => { if(fullYaml) await navigator.clipboard.writeText(fullYaml); };
             const downloadYAML = () => {
-                if(!outputYaml) return;
-                const blob = new Blob([outputYaml], { type: 'text/yaml;charset=utf-8;' });
+                if(!fullYaml) return;
+                const blob = new Blob([fullYaml], { type: 'text/yaml;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
                 link.download = "generated_serials.yaml";
