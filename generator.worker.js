@@ -70,9 +70,11 @@ self.onmessage = async function(e) {
                 // The protected length is NOW and FOREVER based on the BASE tail's length.
                 const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
                 const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
-                
+
                 // The dynamic length is now correctly calculated based on the BASE seed, not the average.
-                const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+                // **FIX:** Ensure the final target length is never smaller than the protected length.
+                let dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+                dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
                 
                 let mutatedTail;
                 const mutableZone = baseTail.length - protectedStartLength;
