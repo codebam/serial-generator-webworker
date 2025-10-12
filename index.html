@@ -3,20 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine v10.0 (Classic Worker Logic)</title>
+    <title>Serial Mutation Engine v9.8 (Classic Defaults)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['SF Mono', 'ui-monospace', 'monospace'] } } } }
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['SF Mono', 'ui-monospace', 'monospace']
+                    }
+                }
+            }
+        }
     </script>
     
     <style>
         body { background-color: #111827; }
-        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; } ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
         .accordion-summary::-webkit-details-marker { display: none; }
     </style>
 </head>
@@ -35,7 +46,9 @@
             <details open={open} className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
                 <summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
                     {title}
-                    <svg className="w-5 h-5 transition-transform transform details-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    <svg className="w-5 h-5 transition-transform transform details-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                 </summary>
                 <div className="p-5 pt-2 flex flex-col gap-6">{children}</div>
                 <style>{`.accordion-summary + .details-arrow { transition: transform 0.2s; } details[open] .details-arrow { transform: rotate(90deg); }`}</style>
@@ -50,24 +63,43 @@
         );
 
         const App = () => {
+            // --- STATE MANAGEMENT WITH ORIGINAL DEFAULTS RESTORED ---
             const defaultState = {
-                repositoryData: { class_mod: "", shield: "", ordnance: "", enhancement: "", gun: "", repkit: "" },
+                repositoryData: { 
+                    class_mod: "", 
+                    shield: "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS", 
+                    ordnance: "", 
+                    enhancement: "", 
+                    gun: "", 
+                    repkit: "" 
+                },
                 currentRepo: 'class_mod',
-                seed: "@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U",
+                seed: "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc",
                 counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
                 rules: {
-                    targetOffset: 0, minProtected: 100, maxProtected: 100,
-                    minChunk: 3, maxChunk: 7, targetChunk: 5,
-                    minPart: 4, maxPart: 8, legendaryChance: 100
+                    targetOffset: 0, 
+                    minProtected: 95,
+                    maxProtected: 100,
+                    minChunk: 3, 
+                    maxChunk: 7, 
+                    targetChunk: 5,
+                    minPart: 4, 
+                    maxPart: 8, 
+                    legendaryChance: 100
                 }
             };
             
-            const [state, setState] = useState(() => JSON.parse(localStorage.getItem('serialGenState')) || defaultState);
+            const [state, setState] = useState(() => {
+                const savedState = localStorage.getItem('serialGenState');
+                return savedState ? JSON.parse(savedState) : defaultState;
+            });
+            
             const [statusMessage, setStatusMessage] = useState("Ready to generate.");
             const [validationResult, setValidationResult] = useState("");
             const [progress, setProgress] = useState(0);
             const [isGenerating, setIsGenerating] = useState(false);
             const [outputYaml, setOutputYaml] = useState("");
+            
             const workerRef = useRef(null);
 
             useEffect(() => {
@@ -108,8 +140,6 @@
 
             const startGeneration = () => {
                 setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult("");
-                
-                // This config object now matches what the classic worker expects
                 const config = {
                     seed: state.seed,
                     repositories: state.repositoryData,
@@ -119,8 +149,6 @@
                     tg2Count: parseInt(state.counts.tg2),
                     tg3Count: parseInt(state.counts.tg3),
                     tg4Count: parseInt(state.counts.tg4),
-                    
-                    // Pass all the rules from the UI
                     targetOffset: parseInt(state.rules.targetOffset),
                     minProtectedPercent: parseInt(state.rules.minProtected),
                     maxProtectedPercent: parseInt(state.rules.maxProtected),
@@ -130,15 +158,16 @@
                     minPartSize: parseInt(state.rules.minPart),
                     maxPartSize: parseInt(state.rules.maxPart),
                     legendaryChance: parseInt(state.rules.legendaryChance),
+                    gpuBatchSize: 250000,
                     debugMode: true,
                 };
                 workerRef.current.postMessage({ type: 'generate', payload: config });
             };
             
             const resetForm = () => {
-                if(confirm("Are you sure you want to reset all mutation rules to their defaults?")) {
-                    setState(prev => ({ ...prev, rules: defaultState.rules }));
-                    setStatusMessage("Mutation rules reset to defaults.");
+                if(confirm("Are you sure you want to reset all settings to their original defaults?")) {
+                    setState(defaultState);
+                    setStatusMessage("Settings have been reset to original defaults.");
                 }
             };
             
@@ -220,19 +249,31 @@
                                     <FormGroup label="TG4"><input type="number" name="counts.tg4" value={state.counts.tg4} onChange={handleInputChange} className={inputClasses} /></FormGroup>
                                 </div>
                             </Accordion>
+
                             <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>Generate Serials</button>
-                                    <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset Rules</button>
+                                    <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset All</button>
                                 </div>
                                 <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center">{statusMessage}</div>
-                                {isGenerating && <div className="w-full bg-gray-700 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div></div>}
+                                {isGenerating && 
+                                    <div className="w-full bg-gray-700 rounded-full h-2.5">
+                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                                    </div>
+                                }
                                 {validationResult && <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center">{validationResult}</div>}
                             </div>
                         </div>
+
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 flex flex-col h-full min-h-[80vh]">
-                            <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-semibold">YAML Output</h2><div className="flex gap-2"><button onClick={copyToClipboard} className={btnClasses.tertiary}>Copy</button><button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button></div></div>
-                            <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold">YAML Output</h2>
+                                <div className="flex gap-2">
+                                    <button onClick={copyToClipboard} className={btnClasses.tertiary}>Copy</button>
+                                    <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
+                                </div>
+                             </div>
+                             <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>
                         </div>
                     </main>
                 </div>
