@@ -85,15 +85,7 @@
                     targetChunk: 5,
                     minPart: 4, 
                     maxPart: 8, 
-                    legendaryChance: 100,
-                    legendaryPerkChance: 50,
-                    legendaryPerkRepo: "",
-                    legendaryPerkMin: 45,
-                    legendaryPerkMax: 55,
-                    legendaryPerkExtractionMin: 25,
-                    legendaryPerkExtractionMax: 75,
-                    legendaryPerkLengthMin: 4,
-                    legendaryPerkLengthMax: 6
+                    legendaryChance: 100
                 },
                 validationChars: 12
             };
@@ -179,14 +171,6 @@
                     minPartSize: parseInt(state.rules.minPart),
                     maxPartSize: parseInt(state.rules.maxPart),
                     legendaryChance: parseInt(state.rules.legendaryChance),
-                    legendaryPerkChance: parseInt(state.rules.legendaryPerkChance),
-                    legendaryPerkRepo: state.rules.legendaryPerkRepo,
-                    legendaryPerkMin: parseInt(state.rules.legendaryPerkMin),
-                    legendaryPerkMax: parseInt(state.rules.legendaryPerkMax),
-                    legendaryPerkExtractionMin: parseInt(state.rules.legendaryPerkExtractionMin),
-                    legendaryPerkExtractionMax: parseInt(state.rules.legendaryPerkExtractionMax),
-                    legendaryPerkLengthMin: parseInt(state.rules.legendaryPerkLengthMin),
-                    legendaryPerkLengthMax: parseInt(state.rules.legendaryPerkLengthMax),
                     gpuBatchSize: 250000,
                     debugMode: true,
                 };
@@ -257,12 +241,6 @@
                                     </div>
                                     <textarea className={`${inputClasses} min-h-[120px]`} value={state.repositoryData[state.currentRepo]} onChange={handleRepoEdit} placeholder="Paste serials here..."></textarea>
                                 </FormGroup>
-                                <FormGroup label="Legendary Perk Repository">
-                                    <div class="flex items-center gap-2">
-                                        <textarea className={`${inputClasses} min-h-[120px]`} name="rules.legendaryPerkRepo" value={state.rules.legendaryPerkRepo} onChange={handleInputChange} placeholder="Paste legendary perk serials here..."></textarea>
-                                        <button onClick={() => setState(prev => ({ ...prev, rules: { ...prev.rules, legendaryPerkRepo: '' }}))} className={btnClasses.tertiary}>Clear</button>
-                                    </div>
-                                </FormGroup>
                                  <FormGroup label="Base Serial Seed">
                                     <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
                                 </FormGroup>
@@ -292,29 +270,6 @@
                                 </FormGroup>
                                 <FormGroup label="Final Tail Length Offset">
                                     <input type="number" name="rules.targetOffset" value={state.rules.targetOffset} onChange={handleInputChange} className={inputClasses} />
-                                </FormGroup>
-                            </Accordion>
-                            <Accordion title="✨ Legendary Perk Rules">
-                                <FormGroup label={`Legendary Perk Chance (${state.rules.legendaryPerkChance}%)`}>
-                                    <input type="range" name="rules.legendaryPerkChance" min="0" max="100" value={state.rules.legendaryPerkChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
-                                </FormGroup>
-                                <FormGroup label="Legendary Perk Injection Range (%)">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.legendaryPerkMin" value={state.rules.legendaryPerkMin} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.legendaryPerkMax" value={state.rules.legendaryPerkMax} onChange={handleInputChange} className={inputClasses} />
-                                    </div>
-                                </FormGroup>
-                                <FormGroup label="Legendary Perk Extraction Range (%)">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.legendaryPerkExtractionMin" value={state.rules.legendaryPerkExtractionMin} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.legendaryPerkExtractionMax" value={state.rules.legendaryPerkExtractionMax} onChange={handleInputChange} className={inputClasses} />
-                                    </div>
-                                </FormGroup>
-                                <FormGroup label="Legendary Perk Length">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.legendaryPerkLengthMin" value={state.rules.legendaryPerkLengthMin} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.legendaryPerkLengthMax" value={state.rules.legendaryPerkLengthMax} onChange={handleInputChange} className={inputClasses} />
-                                    </div>
                                 </FormGroup>
                             </Accordion>
                             <Accordion title="🔢 Output Counts">
