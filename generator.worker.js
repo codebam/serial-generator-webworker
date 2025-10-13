@@ -2,6 +2,7 @@
 // Definitive version with classic TG4 "Targeted Mutation" restored.
 // Performance Fix: All statistical calculations are handled in the worker.
 // UI Fix: YAML is sent immediately, stats are sent in a separate message.
+// DEBUGGING: Added extensive console logging.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = '@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U';
@@ -24,6 +25,7 @@ const MUTATION_INTENSITY = { light: 0.3, medium: 0.6, heavy: 0.9 };
 let gpuDevice = null;
 let randomBuffer;
 let randomIndex = 0;
+let debugMode = false; // Global debug flag
 
 function getNextRandom() {
 	if (randomIndex >= randomBuffer.length) {
@@ -35,6 +37,7 @@ function getNextRandom() {
 
 // --- WebGPU & UTILITY FUNCTIONS ---
 async function setupWebGPU() {
+    console.log('[DEBUG] Attempting to set up WebGPU...');
 	if (typeof navigator === 'undefined' || !navigator.gpu) {
 		console.warn('WebGPU not supported. Falling back to crypto.getRandomValues.');
 		return null;
@@ -46,6 +49,7 @@ async function setupWebGPU() {
 			return null;
 		}
 		const device = await adapter.requestDevice();
+        console.log('[DEBUG] WebGPU device successfully initialized.');
 		gpuDevice = device;
 		return device;
 	} catch (error) {
@@ -56,7 +60,7 @@ async function setupWebGPU() {
 }
 async function generateRandomNumbersOnGPU(count) {
 	if (!gpuDevice) {
-		console.log(`Generating ${count} random numbers using CPU (crypto.getRandomValues).`);
+		console.log(`[DEBUG] Generating ${count} random numbers using CPU (crypto.getRandomValues).`);
 		randomBuffer = new Float32Array(count);
 		const maxChunkSize = 16384; // 65536 bytes / 4 bytes per float
 		let offset = 0;
@@ -74,7 +78,7 @@ async function generateRandomNumbersOnGPU(count) {
 		randomIndex = 0;
 		return;
 	}
-	console.log(`Generating batch of ${count} random numbers using GPU.`);
+	console.log(`[DEBUG] Generating batch of ${count} random numbers using GPU.`);
 	const shaderCode = `
         struct Uniforms { time_seed: f32, };
         struct Numbers { data: array<f32>, };
@@ -152,6 +156,7 @@ function splitHeaderTail(serial) {
 	return [serial.substring(0, 10), serial.substring(10)];
 }
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
+    console.log('[DEBUG] Starting high-value part extraction...');
 	const frequencyMap = new Map();
 	// 1. Find all repeating substrings within the size range
 	for (let size = minPartSize; size <= maxPartSize; size++) {
@@ -163,8 +168,12 @@ function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
 			}
 		}
 	}
+    if (debugMode) console.log(`[DEBUG] Initial frequency map size: ${frequencyMap.size}`);
+
 
 	let parts = [...frequencyMap.entries()].filter(([, count]) => count > 1).map(([part]) => part);
+    if (debugMode) console.log(`[DEBUG] Found ${parts.length} repeating parts.`);
+
 
 	// 2. Consolidate overlapping and contained parts
 	let changed = true;
@@ -191,6 +200,9 @@ function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
 			changed = true;
 		}
 	}
+    console.log(`[DEBUG] Consolidated to ${parts.length} unique high-value parts.`);
+    if (debugMode) console.log('[DEBUG] Top 5 High-Value Parts:', parts.slice(0, 5));
+
 
 	// 3. Sort by length (longest first) as a final step
 	return parts.sort((a, b) => b.length - a.length);
@@ -260,14 +272,17 @@ function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) {
 
 // --- INTELLIGENT MUTATION ALGORITHMS ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) {
+    if (debugMode) console.log(`[DEBUG] > Append Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}`);
 	const startPart = baseTail.substring(0, protectedStartLength);
 	const paddingLength = finalLength - startPart.length;
 	if (paddingLength <= 0) return startPart.substring(0, finalLength);
 	let padding = '';
 	for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET);
+    if (debugMode) console.log(`[DEBUG]   > Appending ${paddingLength} random characters.`);
 	return startPart + padding;
 }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) {
+    if (debugMode) console.log(`[DEBUG] > Crossover Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}`);
 	let childTail = baseTail;
 	const mutableStart = protectedStartLength;
 	const childMutableLength = childTail.length - mutableStart;
@@ -277,6 +292,7 @@ function performWindowedCrossover(baseTail, parentTail, finalLength, protectedSt
 		const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize);
 		const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
 		const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length);
+        if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" at index ${injectionPoint}.`);
 		childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length);
 	}
 	if (childTail.length < finalLength) {
@@ -316,21 +332,31 @@ function divideTailIntoParts(tail, num_parts) {
 	return parts;
 }
 function generateTargetedMutation(baseTail, item_type) {
+    if (debugMode) console.log(`[DEBUG] > TG4 Targeted Mutation | item_type: ${item_type}`);
 	const num_parts = Math.max(5, Math.floor(baseTail.length / 20));
 	const target_part_index = randomInt(0, num_parts - 1);
 	const parts = divideTailIntoParts(baseTail, num_parts);
 	if (target_part_index >= parts.length) return baseTail;
 	const { start, end } = parts[target_part_index];
 	const chars = [...baseTail];
-	const mutation_rate = MUTATION_INTENSITY[randomChoice(['light', 'medium', 'heavy'])];
+    const intensityChoice = randomChoice(['light', 'medium', 'heavy']);
+	const mutation_rate = MUTATION_INTENSITY[intensityChoice];
 	const char_pool = getItemCharPool(item_type);
+    if (debugMode) console.log(`[DEBUG]   > Mutating part ${target_part_index + 1}/${num_parts} (indices ${start}-${end}) with ${intensityChoice} intensity (${mutation_rate}).`);
+
+    let mutationCount = 0;
 	for (let i = start; i < end; i++) {
-		if (getNextRandom() < mutation_rate) chars[i] = randomChoice(char_pool);
+		if (getNextRandom() < mutation_rate) {
+            chars[i] = randomChoice(char_pool);
+            mutationCount++;
+        }
 	}
+    if (debugMode) console.log(`[DEBUG]   > Mutated ${mutationCount} characters.`);
 	return chars.join('');
 }
 
 function filterSerials(yaml, seed, validationChars) {
+    console.log(`[DEBUG] Starting filtering process with seed "${seed}" and ${validationChars} validation characters.`);
 	if (!yaml)
 		return {
 			validationResult: 'No YAML content to filter.',
@@ -362,6 +388,8 @@ function filterSerials(yaml, seed, validationChars) {
 	if (currentItem.length > 0) {
 		items.push(currentItem);
 	}
+    console.log(`[DEBUG] Parsed ${items.length} items from YAML for filtering.`);
+
 
 	if (items.length === 0)
 		return {
@@ -408,6 +436,8 @@ function filterSerials(yaml, seed, validationChars) {
 			validatedSerials.push(serial);
 		}
 	}
+    console.log(`[DEBUG] Filtering Complete. Total: ${totalSerials}, Passed: ${validatedItems.length}, Invalid Headers: ${invalidHeaderCount}, Invalid Chars: ${invalidCharCount}, Off-Seed: ${offSeedCount}`);
+
 
 	const validatedYaml = header + '\n' + validatedItems.join('\n');
 	const validatedCount = validatedItems.length;
@@ -427,6 +457,15 @@ function filterSerials(yaml, seed, validationChars) {
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function (e) {
 	const { type, payload } = e.data;
+    console.log(`[DEBUG] Worker received message of type: ${type}`);
+    if (payload && payload.debugMode) {
+        debugMode = true;
+        console.log('[DEBUG] Debug mode is ENABLED.');
+    } else {
+        debugMode = false;
+    }
+
+
 	if (type === 'validate') {
 		const validationData = filterSerials(payload.yaml, payload.seed, payload.validationChars);
 		let chartData = null;
@@ -448,9 +487,11 @@ self.onmessage = async function (e) {
 
 	if (type !== 'generate') return;
 	const config = e.data.payload;
+    if (debugMode) console.log('[DEBUG] Received generation config:', config);
 	try {
 		if (!gpuDevice) await setupWebGPU();
 		const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
+        console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
 		if (totalRequested === 0) {
 			self.postMessage({
 				type: 'complete',
@@ -464,13 +505,19 @@ self.onmessage = async function (e) {
 		}
 		await generateRandomNumbersOnGPU(config.gpuBatchSize);
 		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
+        console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
+
 		const selectedRepoTails = (config.repositories[config.itemType] || '')
 			.split(/[\s\n]+/)
 			.filter((s) => s.startsWith('@U'))
 			.map((s) => splitHeaderTail(s)[1]);
 		if (selectedRepoTails.length === 0) {
+            console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
 			selectedRepoTails.push(baseTail);
-		}
+		} else {
+            console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
+        }
+
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
 		const legendaryStackingChance = config.legendaryChance / 100.0;
 
@@ -480,16 +527,19 @@ self.onmessage = async function (e) {
 		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
 		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
 		for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
-		serialsToGenerate.sort(() => getNextRandom() - 0.5);
+		serialsToGenerate.sort(() => getNextRandom() - 0.5); // Shuffle the generation order
 
 		const seenSerials = new Set();
 		const generatedSerials = [];
+        console.log('[DEBUG] Starting generation loop...');
 
 		for (let i = 0; i < totalRequested; i++) {
 			if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
 			const item = serialsToGenerate[i];
 			let serial = '';
 			let innerAttempts = 0;
+
+            if (debugMode && i < 10) console.log(`\n[DEBUG] --- Generating Serial #${i + 1} (Type: ${item.tg}) ---`);
 
 			do {
 				const parentTail = randomChoice(selectedRepoTails);
@@ -506,7 +556,7 @@ self.onmessage = async function (e) {
 					const mutableZone = baseTail.length - protectedStartLength;
 					if (item.tg === 'NEW' || mutableZone < config.minChunkSize) {
 						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
-					} else {
+					} else { // TG1 and TG2 use Crossover
 						mutatedTail = performWindowedCrossover(
 							baseTail,
 							parentTail,
@@ -518,7 +568,9 @@ self.onmessage = async function (e) {
 						);
 					}
 
+					// TG3 attempts legendary stacking on top of the base mutation
 					if (item.tg === 'TG3' && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+                        if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
 						const part = randomChoice(highValueParts).slice();
 						const availableMutableSpace = dynamicTargetLength - protectedStartLength;
 						if (availableMutableSpace >= part.length) {
@@ -526,12 +578,14 @@ self.onmessage = async function (e) {
 							const repeatedBlock = new Array(numRepeats).fill(part).join('');
 							const prefixLength = dynamicTargetLength - repeatedBlock.length;
 							mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
+                            if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
 						}
 					}
 				}
 
 				serial = ensureCharset(baseHeader + mutatedTail);
 				innerAttempts++;
+                if (innerAttempts > 1 && debugMode) console.warn(`[DEBUG] Collision detected. Retrying... (Attempt ${innerAttempts})`);
 			} while (seenSerials.has(serial) && innerAttempts < 20);
 
 			if (!seenSerials.has(serial)) {
@@ -550,6 +604,8 @@ self.onmessage = async function (e) {
 					payload: { processed: i + 1, total: totalRequested },
 				});
 		}
+        console.log(`[DEBUG] Generation loop finished. Generated ${generatedSerials.length} unique serials.`);
+
 
 		const fullLines = ['state:', '  inventory:', '    items:', '      backpack:'];
 		generatedSerials.forEach((item) => {
@@ -572,6 +628,7 @@ self.onmessage = async function (e) {
 
 		// --- DECOUPLED MESSAGES ---
 		// 1. Send YAML data immediately for UI responsiveness
+        console.log('[DEBUG] Sending YAML output to main thread.');
 		self.postMessage({
 			type: 'complete',
 			payload: {
@@ -585,6 +642,7 @@ self.onmessage = async function (e) {
 
 		// 2. If stats are enabled, calculate and send them in a separate message
 		if (config.generateStats && generatedSerials.length > 0) {
+            console.log('[DEBUG] Calculating and sending statistics.');
 			const serialStrings = generatedSerials.map((s) => s.serial);
 			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
 			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);

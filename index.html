@@ -87,7 +87,7 @@
 					repositoryData: {
 						class_mod: '',
 						shield:
-							'@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
+							'@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
 						ordnance: '',
 						enhancement: '',
 						gun: '',
@@ -109,11 +109,40 @@
 					},
 					validationChars: 12,
 					generateStats: true,
+					debugMode: false,
 				};
 
 				const [state, setState] = useState(() => {
-					const savedState = localStorage.getItem('serialGenState');
-					return savedState ? JSON.parse(savedState) : defaultState;
+					// --- MODIFIED STATE INITIALIZATION ---
+					// This robustly merges saved state with defaults to prevent uncontrolled component warnings.
+					const savedStateJSON = localStorage.getItem('serialGenState');
+					if (savedStateJSON) {
+						try {
+							const savedState = JSON.parse(savedStateJSON);
+							// Deep merge to ensure all keys from defaultState are present
+							return {
+								...defaultState,
+								...savedState,
+								repositoryData: {
+									...defaultState.repositoryData,
+									...(savedState.repositoryData || {}),
+								},
+								counts: {
+									...defaultState.counts,
+									...(savedState.counts || {}),
+								},
+								rules: {
+									...defaultState.rules,
+									...(savedState.rules || {}),
+								},
+							};
+						} catch (error) {
+							console.error('Failed to parse saved state from localStorage:', error);
+							return defaultState; // Fallback to defaults if parsing fails
+						}
+					}
+					return defaultState;
+					// --- END MODIFIED STATE INITIALIZATION ---
 				});
 
 				const [statusMessage, setStatusMessage] = useState('Ready to generate.');
@@ -218,13 +247,29 @@
 				}, [state]);
 
 				const handleInputChange = (e) => {
-					const { name, value, type } = e.target;
+					const { name, value, type, checked } = e.target;
+					// Handle checkboxes
+					if (type === 'checkbox') {
+						const [category, key] = name.split('.');
+						if (key) {
+							setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: checked } }));
+						} else {
+							setState((prev) => ({ ...prev, [name]: checked }));
+						}
+						return;
+					}
+
+					// Handle number and text inputs
 					if (type === 'number' && value !== '' && isNaN(parseInt(value, 10))) {
 						return; // Don't update state for invalid number input
 					}
 					const val = type === 'number' && value !== '' ? parseInt(value, 10) : value;
 					const [category, key] = name.split('.');
-					setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
+					if (key) {
+						setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
+					} else {
+						setState((prev) => ({ ...prev, [name]: val }));
+					}
 				};
 				const handleRepoSelect = (e) => setState((prev) => ({ ...prev, currentRepo: e.target.value }));
 				const handleRepoEdit = (e) =>
@@ -256,8 +301,8 @@
 						maxPartSize: parseInt(state.rules.maxPart || '0', 10),
 						legendaryChance: parseInt(state.rules.legendaryChance || '0', 10),
 						gpuBatchSize: 250000,
-						debugMode: true,
 						generateStats: state.generateStats,
+						debugMode: state.debugMode,
 					};
 					workerRef.current.postMessage({ type: 'generate', payload: config });
 				};
@@ -270,6 +315,7 @@
 						setFilteredYaml('');
 						setValidationResult('');
 						setStatusMessage('Settings have been reset to original defaults.');
+						localStorage.removeItem('serialGenState'); // Clear storage on reset
 					}
 				};
 
@@ -339,7 +385,7 @@
 										</div>
 										<textarea
 											className={`${inputClasses} min-h-[120px]`}
-											value={state.repositoryData[state.currentRepo]}
+											value={state.repositoryData[state.currentRepo] || ''}
 											onChange={handleRepoEdit}
 											placeholder="Paste serials here..."
 										></textarea>
@@ -493,18 +539,31 @@
 											Reset All
 										</button>
 									</div>
-									<div className="flex justify-center">
+									<div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2">
 										<div className="flex items-center">
 											<input
 												type="checkbox"
 												id="genStats"
-												name="genStats"
+												name="generateStats"
 												checked={state.generateStats}
-												onChange={(e) => setState((prev) => ({ ...prev, generateStats: e.target.checked }))}
+												onChange={handleInputChange}
 												className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
 											/>
 											<label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">
-												Generate Legendary Part Statistics
+												Generate Part Statistics
+											</label>
+										</div>
+										<div className="flex items-center">
+											<input
+												type="checkbox"
+												id="debugMode"
+												name="debugMode"
+												checked={state.debugMode}
+												onChange={handleInputChange}
+												className="h-4 w-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
+											/>
+											<label htmlFor="debugMode" className="ml-2 text-sm font-medium text-gray-300">
+												Enable Debug Logging
 											</label>
 										</div>
 									</div>
@@ -527,7 +586,7 @@
 											type="number"
 											name="validationChars"
 											value={state.validationChars}
-											onChange={(e) => setState((prev) => ({ ...prev, validationChars: parseInt(e.target.value) }))}
+											onChange={handleInputChange}
 											className={inputClasses}
 										/>
 									</FormGroup>
@@ -542,6 +601,7 @@
 													generateStats: state.generateStats,
 													minPart: state.rules.minPart,
 													maxPart: state.rules.maxPart,
+													debugMode: state.debugMode,
 												},
 											})
 										}
