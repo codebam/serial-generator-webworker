@@ -3,7 +3,7 @@
 // Performance Fix: All statistical calculations are handled in the worker.
 // UI Fix: YAML is sent immediately, stats are sent in a separate message.
 // DEBUGGING: Added extensive console logging with robust flag setting.
-// CORRECTION: Fixed logic flaw where TG1/TG2 would incorrectly fall back to append mutation.
+// CORRECTION 2: Modified crossover logic to correctly handle 100% protection edge case.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = '@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U';
@@ -284,21 +284,22 @@ function generateAppendMutation(baseTail, finalLength, protectedStartLength) {
 }
 function performWindowedCrossover(baseTail, parentTail, finalLength, protectedStartLength, minChunk, maxChunk, targetChunk) {
     if (debugMode) console.log(`[DEBUG] > Crossover Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}`);
-	let childTail = baseTail;
-	const mutableStart = protectedStartLength;
-	const childMutableLength = childTail.length - mutableStart;
-	const parentMutableLength = parentTail.length - protectedStartLength;
+	let childTail = baseTail.substring(0, protectedStartLength); // Start with only the protected part
 	const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk));
-    
-    // Ensure there is a mutable zone to work with, even if it's at the very end
-	if (childMutableLength >= 0 && parentMutableLength > finalChunkSize) {
-		const chunkStartInParent = randomInt(protectedStartLength, parentTail.length - finalChunkSize);
+
+    // --- NEW LOGIC ---
+    // If the parent is long enough to provide a chunk, proceed.
+	if (parentTail.length >= finalChunkSize) {
+        // Take a chunk from ANYWHERE in the parent.
+		const chunkStartInParent = randomInt(0, parentTail.length - finalChunkSize);
 		const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
-        // Ensure injection point is valid even if child is fully protected
-		const injectionPoint = randomInt(protectedStartLength, Math.max(protectedStartLength, childTail.length - chunk.length));
-        if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" at index ${injectionPoint}.`);
-		childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length);
+        
+        if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" after protected zone.`);
+
+        // Append the chunk directly after the protected part.
+        childTail += chunk;
 	}
+    // --- END NEW LOGIC ---
 
 	if (childTail.length < finalLength) {
 		let padding = '';
@@ -550,8 +551,7 @@ self.onmessage = async function (e) {
 				dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
 
 				let mutatedTail;
-                
-                // --- CORRECTED LOGIC BLOCK ---
+
 				switch (item.tg) {
                     case 'NEW':
                         mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
@@ -583,13 +583,16 @@ self.onmessage = async function (e) {
                         if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
                             if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
                             const part = randomChoice(highValueParts).slice();
+                            // Use the final target length for calculation, not the base tail length
                             const availableMutableSpace = dynamicTargetLength - protectedStartLength;
                             if (availableMutableSpace >= part.length) {
                                 const numRepeats = Math.floor(availableMutableSpace / part.length);
-                                const repeatedBlock = new Array(numRepeats).fill(part).join('');
-                                const prefixLength = dynamicTargetLength - repeatedBlock.length;
-                                mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
-                                if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+                                if (numRepeats > 0) {
+                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
+                                    // Replace the end of the tail with the repeated block
+                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+                                    if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+                                }
                             }
                         }
                         break;
@@ -599,7 +602,6 @@ self.onmessage = async function (e) {
                     default:
                          mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
                 }
-                // --- END CORRECTED LOGIC BLOCK ---
 
 				serial = ensureCharset(baseHeader + mutatedTail);
 				innerAttempts++;
