@@ -2,7 +2,8 @@
 // Definitive version with classic TG4 "Targeted Mutation" restored.
 // Performance Fix: All statistical calculations are handled in the worker.
 // UI Fix: YAML is sent immediately, stats are sent in a separate message.
-// DEBUGGING: Added extensive console logging.
+// DEBUGGING: Added extensive console logging with robust flag setting.
+// CORRECTION: Fixed logic flaw where TG1/TG2 would incorrectly fall back to append mutation.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = '@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U';
@@ -288,13 +289,17 @@ function performWindowedCrossover(baseTail, parentTail, finalLength, protectedSt
 	const childMutableLength = childTail.length - mutableStart;
 	const parentMutableLength = parentTail.length - protectedStartLength;
 	const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk));
-	if (childMutableLength > finalChunkSize && parentMutableLength > finalChunkSize) {
-		const chunkStartInParent = randomInt(mutableStart, parentTail.length - finalChunkSize);
+    
+    // Ensure there is a mutable zone to work with, even if it's at the very end
+	if (childMutableLength >= 0 && parentMutableLength > finalChunkSize) {
+		const chunkStartInParent = randomInt(protectedStartLength, parentTail.length - finalChunkSize);
 		const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
-		const injectionPoint = randomInt(mutableStart, childTail.length - chunk.length);
+        // Ensure injection point is valid even if child is fully protected
+		const injectionPoint = randomInt(protectedStartLength, Math.max(protectedStartLength, childTail.length - chunk.length));
         if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" at index ${injectionPoint}.`);
 		childTail = childTail.slice(0, injectionPoint) + chunk + childTail.slice(injectionPoint + chunk.length);
 	}
+
 	if (childTail.length < finalLength) {
 		let padding = '';
 		for (let i = 0; i < finalLength - childTail.length; i++) padding += randomChoice(ALPHABET);
@@ -457,14 +462,10 @@ function filterSerials(yaml, seed, validationChars) {
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function (e) {
 	const { type, payload } = e.data;
-    console.log(`[DEBUG] Worker received message of type: ${type}`);
-    if (payload && payload.debugMode) {
-        debugMode = true;
-        console.log('[DEBUG] Debug mode is ENABLED.');
-    } else {
-        debugMode = false;
-    }
+    // This is the most reliable place to set the debug flag.
+    debugMode = payload && payload.debugMode;
 
+	console.log(`[DEBUG] Worker received message of type: ${type}. Debug mode is ${debugMode ? 'ENABLED' : 'DISABLED'}.`);
 
 	if (type === 'validate') {
 		const validationData = filterSerials(payload.yaml, payload.seed, payload.validationChars);
@@ -549,15 +550,15 @@ self.onmessage = async function (e) {
 				dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
 
 				let mutatedTail;
-
-				if (item.tg === 'TG4') {
-					mutatedTail = generateTargetedMutation(baseTail, config.itemType);
-				} else {
-					const mutableZone = baseTail.length - protectedStartLength;
-					if (item.tg === 'NEW' || mutableZone < config.minChunkSize) {
-						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
-					} else { // TG1 and TG2 use Crossover
-						mutatedTail = performWindowedCrossover(
+                
+                // --- CORRECTED LOGIC BLOCK ---
+				switch (item.tg) {
+                    case 'NEW':
+                        mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+                        break;
+                    case 'TG1':
+                    case 'TG2':
+                        mutatedTail = performWindowedCrossover(
 							baseTail,
 							parentTail,
 							dynamicTargetLength,
@@ -566,22 +567,39 @@ self.onmessage = async function (e) {
 							config.maxChunkSize,
 							config.targetChunkSize,
 						);
-					}
-
-					// TG3 attempts legendary stacking on top of the base mutation
-					if (item.tg === 'TG3' && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
-                        if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
-						const part = randomChoice(highValueParts).slice();
-						const availableMutableSpace = dynamicTargetLength - protectedStartLength;
-						if (availableMutableSpace >= part.length) {
-							const numRepeats = Math.floor(availableMutableSpace / part.length);
-							const repeatedBlock = new Array(numRepeats).fill(part).join('');
-							const prefixLength = dynamicTargetLength - repeatedBlock.length;
-							mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
-                            if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
-						}
-					}
-				}
+                        break;
+                    case 'TG3':
+                        // Start with a crossover base
+                        mutatedTail = performWindowedCrossover(
+							baseTail,
+							parentTail,
+							dynamicTargetLength,
+							protectedStartLength,
+							config.minChunkSize,
+							config.maxChunkSize,
+							config.targetChunkSize,
+						);
+                        // Then attempt legendary stacking
+                        if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+                            if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
+                            const part = randomChoice(highValueParts).slice();
+                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+                            if (availableMutableSpace >= part.length) {
+                                const numRepeats = Math.floor(availableMutableSpace / part.length);
+                                const repeatedBlock = new Array(numRepeats).fill(part).join('');
+                                const prefixLength = dynamicTargetLength - repeatedBlock.length;
+                                mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
+                                if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+                            }
+                        }
+                        break;
+                    case 'TG4':
+                        mutatedTail = generateTargetedMutation(baseTail, config.itemType);
+                        break;
+                    default:
+                         mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+                }
+                // --- END CORRECTED LOGIC BLOCK ---
 
 				serial = ensureCharset(baseHeader + mutatedTail);
 				innerAttempts++;
