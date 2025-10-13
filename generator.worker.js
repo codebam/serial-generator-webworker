@@ -122,6 +122,7 @@ function randomChoice(arr) { return arr[Math.floor(getNextRandom() * arr.length)
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; return [serial.substring(0, 10), serial.substring(10)]; }
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) { const frequencyMap = new Map(); for (let size = minPartSize; size <= maxPartSize; size++) { for (const tail of repoTails) { if (tail.length < size) continue; for (let i = 0; i <= tail.length - size; i++) { const fragment = tail.substring(i, i + size); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } } const repeatedParts = [...frequencyMap.entries()].filter(([, count]) => count > 1).sort((a, b) => (b[1] !== a[1]) ? b[1] - a[1] : b[0].length - a[0].length); return repeatedParts.map(entry => entry[0]); }
+function extractHighValueParts(repoTails, minPartSize, maxPartSize) { const frequencyMap = new Map(); for (let size = minPartSize; size <= maxPartSize; size++) { for (const tail of repoTails) { if (tail.length < size) continue; for (let i = 0; i <= tail.length - size; i++) { const fragment = tail.substring(i, i + size); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } } const repeatedParts = [...frequencyMap.entries()].filter(([, count]) => count > 1).sort((a, b) => (b[1] !== a[1]) ? b[1] - a[1] : b[0].length - a[0].length); return repeatedParts.map(entry => entry[0]); }
 
 // --- INTELLIGENT MUTATION ALGORITHMS ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) { const startPart = baseTail.substring(0, protectedStartLength); const paddingLength = finalLength - startPart.length; if (paddingLength <= 0) return startPart.substring(0, finalLength); let padding = ''; for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET); return startPart + padding; }
@@ -164,6 +165,7 @@ function filterSerials(yaml, seed, validationChars) {
     let offSeedCount = 0;
     const seedPrefix = seed ? seed.substring(0, validationChars) : null;
     const validatedItems = [];
+    const validatedSerials = [];
     const totalSerials = items.length;
 
     for (const itemBlock of items) {
@@ -194,6 +196,7 @@ function filterSerials(yaml, seed, validationChars) {
 
         if (isValid) {
             validatedItems.push(itemBlock.join('\n'));
+            validatedSerials.push(serial);
         }
     }
     
@@ -209,7 +212,7 @@ function filterSerials(yaml, seed, validationChars) {
         validationResult = `Filtering successful! All ${totalSerials} serials are valid and on-seed.`;
     }
     
-    return { validationResult, validatedYaml };
+    return { validationResult, validatedYaml, validatedSerials };
 }
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
@@ -316,6 +319,6 @@ self.onmessage = async function(e) {
         });
         const truncatedYaml = truncatedLines.join('\n');
 
-        self.postMessage({ type: 'complete', payload: { yaml: fullYaml, truncatedYaml: truncatedYaml, uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: null }});
+        self.postMessage({ type: 'complete', payload: { yaml: fullYaml, truncatedYaml: truncatedYaml, uniqueCount: generatedSerials.length, totalRequested: totalRequested, validationResult: null, serials: config.generateStats ? generatedSerials : null }});
     } catch (error) { console.error("Worker Error:", error); self.postMessage({ type: 'error', payload: { message: error.message } }); }
 };

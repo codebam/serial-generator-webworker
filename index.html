@@ -38,19 +38,20 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const Accordion = ({ title, children, open = false }) => (
-            <details open={open} className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
+        const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
+            <details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
                 <summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
                     {title}
                     <svg className="w-5 h-5 transition-transform transform details-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                 </summary>
-                <div className="p-5 pt-2 flex flex-col gap-6">{children}</div>
+                <div className={`${noPadding ? '' : 'p-5 pt-2'} flex flex-col gap-6 flex-grow`}>{children}</div>
                 <style>{`.accordion-summary + .details-arrow { transition: transform 0.2s; } details[open] .details-arrow { transform: rotate(90deg); }`}</style>
             </details>
         );
@@ -87,7 +88,8 @@
                     maxPart: 8, 
                     legendaryChance: 100
                 },
-                validationChars: 12
+                validationChars: 12,
+                generateStats: true
             };
             
             const [state, setState] = useState(() => {
@@ -104,6 +106,62 @@
             const [filteredYaml, setFilteredYaml] = useState("");
             
             const workerRef = useRef(null);
+            const chartRef = useRef(null);
+
+            const calculateHighValuePartsStats = (serials, minPartSize, maxPartSize) => {
+                const frequencyMap = new Map();
+                const tails = serials.map(s => s.split('!')[1]).filter(t => t);
+                for (let size = minPartSize; size <= maxPartSize; size++) {
+                    for (const tail of tails) {
+                        if (tail.length < size) continue;
+                        for (let i = 0; i <= tail.length - size; i++) {
+                            const fragment = tail.substring(i, i + size);
+                            frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
+                        }
+                    }
+                }
+                return [...frequencyMap.entries()].filter(([, count]) => count > 1).map(entry => entry[0]);
+            };
+
+            const updateChart = (serials) => {
+                if (!state.generateStats) return;
+
+                const partCounts = {};
+                const highValueParts = calculateHighValuePartsStats(serials, state.rules.minPart, state.rules.maxPart);
+
+                highValueParts.forEach(part => {
+                    partCounts[part] = (partCounts[part] || 0) + 1;
+                });
+
+                const sortedParts = Object.entries(partCounts).sort((a, b) => b[1] - a[1]);
+                const labels = sortedParts.map(p => p[0]);
+                const data = sortedParts.map(p => p[1]);
+
+                const ctx = document.getElementById('statsChart').getContext('2d');
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+                chartRef.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Legendary Part Distribution',
+                            data: data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            };
 
             useEffect(() => {
                 localStorage.setItem('serialGenState', JSON.stringify(state));
@@ -123,6 +181,9 @@
                                     const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
                                     setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
                                     setOutputYaml(payload.validatedYaml || ""); // Show filtered result in textarea
+                                    if (state.generateStats && payload.validatedSerials) {
+                                        updateChart(payload.validatedSerials);
+                                    }
                                 } else {
                                     setIsGenerating(false);
                                     setOutputYaml(payload.truncatedYaml);
@@ -130,6 +191,9 @@
                                     setFilteredYaml(""); // Clear filtered yaml on new generation
                                     setValidationResult("");
                                     setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+                                    if (state.generateStats && payload.serials) {
+                                        updateChart(payload.serials.map(s => s.serial));
+                                    }
                                 }
                                 break;
                             case 'error':
@@ -173,6 +237,7 @@
                     legendaryChance: parseInt(state.rules.legendaryChance),
                     gpuBatchSize: 250000,
                     debugMode: true,
+                    generateStats: state.generateStats
                 };
                 workerRef.current.postMessage({ type: 'generate', payload: config });
             };
@@ -224,7 +289,7 @@
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-100">Serial Mutation <span className="text-blue-400">Engine</span></h1>
                         <p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
                     </header>
-                    <main className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,2fr)] gap-8 max-w-7xl mx-auto">
+                    <main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-7xl mx-auto">
                         <div className="flex flex-col gap-4">
                             <Accordion title="📦 Repository & Base Seed" open={true}>
                                 <FormGroup label="Active Repository">
@@ -287,6 +352,14 @@
                                     <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>Generate Serials</button>
                                     <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset All</button>
                                 </div>
+                                <div className="flex justify-center">
+                                    <FormGroup label="Generate Legendary Part Statistics">
+                                        <div className="flex items-center">
+                                            <input type="checkbox" id="genStats" name="genStats" checked={state.generateStats} onChange={(e) => setState(prev => ({ ...prev, generateStats: e.target.checked }))} className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
+                                            <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">Enable</label>
+                                        </div>
+                                    </FormGroup>
+                                </div>
                                 <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center" style={{ whiteSpace: 'pre-line' }}>{statusMessage}</div>
                                 {isGenerating && 
                                     <div className="w-full bg-gray-700 rounded-full h-2.5">
@@ -304,16 +377,22 @@
                             </Accordion>
                         </div>
 
-                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 flex flex-col h-full min-h-[80vh]">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-semibold">YAML Output</h2>
-                                <div class="flex gap-2">
-                                    <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
-                                    <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
-                                    <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
+                        <div className="flex flex-col gap-4 h-full">
+                            <Accordion title="📊 Statistics" open={false}>
+                                <canvas id="statsChart"></canvas>
+                            </Accordion>
+                            <Accordion title="📝 YAML Output" open={true} className="flex-grow" noPadding={true}>
+                                <div className="p-5 pt-2 flex flex-col flex-grow">
+                                    <div className="flex justify-end items-center">
+                                        <div class="flex gap-2">
+                                            <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
+                                            <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
+                                            <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
+                                        </div>
+                                    </div>
+                                    <textarea className={`${inputClasses} flex-grow mt-2`} readOnly value={outputYaml}></textarea>
                                 </div>
-                             </div>
-                             <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>
+                            </Accordion>
                         </div>
                     </main>
                 </div>
