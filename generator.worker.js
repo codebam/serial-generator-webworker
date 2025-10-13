@@ -134,48 +134,61 @@ function getItemCharPool(item_type) { switch (item_type) { case 'shield': return
 function divideTailIntoParts(tail, num_parts) { const parts = []; if (num_parts <= 0) return parts; const part_size = Math.floor(tail.length / num_parts); for (let i = 0; i < num_parts; i++) { const start = i * part_size; const end = (i === num_parts - 1) ? tail.length : start + part_size; parts.push({ start, end }); } return parts; }
 function generateTargetedMutation(baseTail, item_type) { const num_parts = Math.max(5, Math.floor(baseTail.length / 20)); const target_part_index = randomInt(0, num_parts - 1); const parts = divideTailIntoParts(baseTail, num_parts); if (target_part_index >= parts.length) return baseTail; const { start, end } = parts[target_part_index]; const chars = [...baseTail]; const mutation_rate = MUTATION_INTENSITY[randomChoice(["light", "medium", "heavy"])]; const char_pool = getItemCharPool(item_type); for (let i = start; i < end; i++) { if (getNextRandom() < mutation_rate) chars[i] = randomChoice(char_pool); } return chars.join(''); }
 
-function validateSerials(yaml, seed) {
-    if (!yaml) return "No YAML content to validate.";
+function filterSerials(yaml, seed, validationChars) {
+    if (!yaml) return { validationResult: "No YAML content to filter.", validatedSerials: [] };
 
     const lines = yaml.split('\n');
     const serials = lines
         .filter(line => line.trim().startsWith("serial:"))
         .map(line => line.trim().substring(8).replace(/'/g, ""));
 
-    if (serials.length === 0) return "No serials found in the YAML.";
+    if (serials.length === 0) return { validationResult: "No serials found in the YAML.", validatedSerials: [] };
 
     let invalidHeaderCount = 0;
     let invalidCharCount = 0;
     let offSeedCount = 0;
-    const seedPrefix = seed ? seed.substring(0, 12) : null;
+    const seedPrefix = seed ? seed.substring(0, validationChars) : null;
+    const validatedSerials = [];
 
     for (const serial of serials) {
+        let isValid = true;
         if (!serial.startsWith('@U')) {
             invalidHeaderCount++;
+            isValid = false;
         }
         for (const char of serial) {
             if (!ALPHABET.includes(char)) {
                 invalidCharCount++;
+                isValid = false;
             }
         }
         if (seedPrefix && !serial.startsWith(seedPrefix)) {
             offSeedCount++;
+            isValid = false;
+        }
+        if (isValid) {
+            validatedSerials.push(serial);
         }
     }
 
-    if (invalidHeaderCount === 0 && invalidCharCount === 0 && offSeedCount === 0) {
-        return `Validation successful! All ${serials.length} serials are valid and on-seed.`
+    let validationResult;
+    if (invalidHeaderCount > 0 || invalidCharCount > 0) {
+        validationResult = `Filtering failed.\nInvalid headers: ${invalidHeaderCount}.\nInvalid characters: ${invalidCharCount}.`;
+    } else if (offSeedCount > 0) {
+        validationResult = `Filtering complete. ${validatedSerials.length} of ${serials.length} serials passed the filter.`;
     } else {
-        return `Validation failed. Invalid headers: ${invalidHeaderCount}. Invalid characters: ${invalidCharCount}. Off-seed: ${offSeedCount}.`;
+        validationResult = `Filtering successful! All ${serials.length} serials are valid and on-seed.`;
     }
+    
+    return { validationResult, validatedSerials };
 }
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function(e) {
     const { type, payload } = e.data;
     if (type === 'validate') {
-        const validationResult = validateSerials(payload.yaml, payload.seed);
-        self.postMessage({ type: 'complete', payload: { validationResult } });
+        const validationData = filterSerials(payload.yaml, payload.seed, payload.validationChars);
+        self.postMessage({ type: 'complete', payload: validationData });
         return;
     }
 

@@ -94,7 +94,8 @@
                     legendaryPerkExtractionMax: 75,
                     legendaryPerkLengthMin: 4,
                     legendaryPerkLengthMax: 6
-                }
+                },
+                validationChars: 12
             };
             
             const [state, setState] = useState(() => {
@@ -111,6 +112,8 @@
             
             const workerRef = useRef(null);
 
+            const [validatedSerials, setValidatedSerials] = useState([]);
+
             useEffect(() => {
                 localStorage.setItem('serialGenState', JSON.stringify(state));
                 if (!workerRef.current) {
@@ -125,11 +128,13 @@
                             case 'complete':
                                 if (payload.validationResult) {
                                     setValidationResult(payload.validationResult);
-                                    setStatusMessage("Validation complete.");
+                                    setValidatedSerials(payload.validatedSerials || []);
+                                    setStatusMessage(`Filtering complete.\nCopy/Download will use the ${payload.validatedSerials.length} filtered serials.`);
                                 } else {
                                     setIsGenerating(false);
                                     setOutputYaml(payload.truncatedYaml);
                                     setFullYaml(payload.yaml);
+                                    setValidatedSerials([]); // Clear validated serials on new generation
                                     setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
                                 }
                                 break;
@@ -196,18 +201,21 @@
             const [copyText, setCopyText] = useState("Copy");
 
             const copyToClipboard = async () => {
-                if(fullYaml) {
-                    await navigator.clipboard.writeText(fullYaml);
+                const contentToCopy = validatedSerials.length > 0 ? validatedSerials.join('\n') : fullYaml;
+                if (contentToCopy) {
+                    await navigator.clipboard.writeText(contentToCopy);
                     setCopyText("Copied!");
                     setTimeout(() => setCopyText("Copy"), 2000);
                 }
             };
             const downloadYAML = () => {
-                if(!fullYaml) return;
-                const blob = new Blob([fullYaml], { type: 'text/yaml;charset=utf-8;' });
+                const isValidated = validatedSerials.length > 0;
+                const contentToDownload = isValidated ? validatedSerials.join('\n') : fullYaml;
+                if (!contentToDownload) return;
+                const blob = new Blob([contentToDownload], { type: isValidated ? 'text/plain;charset=utf-8;' : 'text/yaml;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = "generated_serials.yaml";
+                link.download = isValidated ? "validated_serials.txt" : "generated_serials.yaml";
                 link.click();
                 URL.revokeObjectURL(link.href);
             };
@@ -317,14 +325,21 @@
                                     <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>Generate Serials</button>
                                     <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset All</button>
                                 </div>
-                                <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center">{statusMessage}</div>
+                                <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center" style={{ whiteSpace: 'pre-line' }}>{statusMessage}</div>
                                 {isGenerating && 
                                     <div className="w-full bg-gray-700 rounded-full h-2.5">
                                         <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
                                     </div>
                                 }
-                                {validationResult && <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center">{validationResult}</div>}
                             </div>
+
+                            <Accordion title="✔️ Filtering">
+                                <FormGroup label="Characters to Filter">
+                                    <input type="number" name="validationChars" value={state.validationChars} onChange={(e) => setState(prev => ({ ...prev, validationChars: parseInt(e.target.value) }))} className={inputClasses} />
+                                </FormGroup>
+                                <button onClick={() => workerRef.current.postMessage({ type: 'validate', payload: { yaml: fullYaml, seed: state.seed, validationChars: state.validationChars }})} className={btnClasses.secondary}>Filter</button>
+                                {validationResult && <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center whitespace-pre-wrap">{validationResult}</div>}
+                            </Accordion>
                         </div>
 
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 flex flex-col h-full min-h-[80vh]">
@@ -333,7 +348,6 @@
                                 <div class="flex gap-2">
                                     <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
                                     <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
-                                    <button onClick={() => workerRef.current.postMessage({ type: 'validate', payload: { yaml: fullYaml, seed: state.seed }})} className={btnClasses.tertiary}>Validate</button>
                                     <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
                                 </div>
                              </div>
