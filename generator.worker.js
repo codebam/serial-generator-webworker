@@ -135,52 +135,83 @@ function divideTailIntoParts(tail, num_parts) { const parts = []; if (num_parts 
 function generateTargetedMutation(baseTail, item_type) { const num_parts = Math.max(5, Math.floor(baseTail.length / 20)); const target_part_index = randomInt(0, num_parts - 1); const parts = divideTailIntoParts(baseTail, num_parts); if (target_part_index >= parts.length) return baseTail; const { start, end } = parts[target_part_index]; const chars = [...baseTail]; const mutation_rate = MUTATION_INTENSITY[randomChoice(["light", "medium", "heavy"])]; const char_pool = getItemCharPool(item_type); for (let i = start; i < end; i++) { if (getNextRandom() < mutation_rate) chars[i] = randomChoice(char_pool); } return chars.join(''); }
 
 function filterSerials(yaml, seed, validationChars) {
-    if (!yaml) return { validationResult: "No YAML content to filter.", validatedSerials: [] };
+    if (!yaml) return { validationResult: "No YAML content to filter.", validatedYaml: "" };
 
     const lines = yaml.split('\n');
-    const serials = lines
-        .filter(line => line.trim().startsWith("serial:"))
-        .map(line => line.trim().substring(8).replace(/'/g, ""));
+    const header = lines.slice(0, 4).join('\n'); // "state:", "  inventory:", "    items:", "      backpack:"
+    const itemLines = lines.slice(4);
 
-    if (serials.length === 0) return { validationResult: "No serials found in the YAML.", validatedSerials: [] };
+    if (itemLines.length === 0) return { validationResult: "No items found in the YAML to filter.", validatedYaml: header };
+
+    const items = [];
+    let currentItem = [];
+
+    for (const line of itemLines) {
+        if (line.trim().startsWith("slot_") && currentItem.length > 0) {
+            items.push(currentItem);
+            currentItem = [];
+        }
+        if (line.trim() !== "") {
+            currentItem.push(line);
+        }
+    }
+    if (currentItem.length > 0) {
+        items.push(currentItem);
+    }
+
+    if (items.length === 0) return { validationResult: "Could not parse any items from the YAML.", validatedYaml: "" };
 
     let invalidHeaderCount = 0;
     let invalidCharCount = 0;
     let offSeedCount = 0;
     const seedPrefix = seed ? seed.substring(0, validationChars) : null;
-    const validatedSerials = [];
+    const validatedItems = [];
+    const totalSerials = items.length;
 
-    for (const serial of serials) {
+    for (const itemBlock of items) {
+        const serialLine = itemBlock.find(l => l.trim().startsWith("serial:"));
+        if (!serialLine) continue;
+
+        const serial = serialLine.trim().substring(8).replace(/'/g, "");
         let isValid = true;
+
         if (!serial.startsWith('@U')) {
             invalidHeaderCount++;
             isValid = false;
         }
-        for (const char of serial) {
-            if (!ALPHABET.includes(char)) {
-                invalidCharCount++;
-                isValid = false;
+        if (isValid) {
+             for (const char of serial) {
+                if (!ALPHABET.includes(char)) {
+                    invalidCharCount++;
+                    isValid = false;
+                    break;
+                }
             }
         }
-        if (seedPrefix && !serial.startsWith(seedPrefix)) {
+       
+        if (isValid && seedPrefix && !serial.startsWith(seedPrefix)) {
             offSeedCount++;
             isValid = false;
         }
+
         if (isValid) {
-            validatedSerials.push(serial);
+            validatedItems.push(itemBlock.join('\n'));
         }
     }
+    
+    const validatedYaml = header + '\n' + validatedItems.join('\n');
+    const validatedCount = validatedItems.length;
 
     let validationResult;
     if (invalidHeaderCount > 0 || invalidCharCount > 0) {
         validationResult = `Filtering failed.\nInvalid headers: ${invalidHeaderCount}.\nInvalid characters: ${invalidCharCount}.`;
     } else if (offSeedCount > 0) {
-        validationResult = `Filtering complete. ${validatedSerials.length} of ${serials.length} serials passed the filter.`;
+        validationResult = `Filtering complete. ${validatedCount} of ${totalSerials} serials passed the filter.`;
     } else {
-        validationResult = `Filtering successful! All ${serials.length} serials are valid and on-seed.`;
+        validationResult = `Filtering successful! All ${totalSerials} serials are valid and on-seed.`;
     }
     
-    return { validationResult, validatedSerials };
+    return { validationResult, validatedYaml };
 }
 
 // --- ASYNC WORKER MESSAGE HANDLER ---

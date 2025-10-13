@@ -109,10 +109,9 @@
             const [isGenerating, setIsGenerating] = useState(false);
             const [outputYaml, setOutputYaml] = useState("");
             const [fullYaml, setFullYaml] = useState("");
+            const [filteredYaml, setFilteredYaml] = useState("");
             
             const workerRef = useRef(null);
-
-            const [validatedSerials, setValidatedSerials] = useState([]);
 
             useEffect(() => {
                 localStorage.setItem('serialGenState', JSON.stringify(state));
@@ -128,13 +127,16 @@
                             case 'complete':
                                 if (payload.validationResult) {
                                     setValidationResult(payload.validationResult);
-                                    setValidatedSerials(payload.validatedSerials || []);
-                                    setStatusMessage(`Filtering complete.\nCopy/Download will use the ${payload.validatedSerials.length} filtered serials.`);
+                                    setFilteredYaml(payload.validatedYaml || "");
+                                    const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
+                                    setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
+                                    setOutputYaml(payload.validatedYaml || ""); // Show filtered result in textarea
                                 } else {
                                     setIsGenerating(false);
                                     setOutputYaml(payload.truncatedYaml);
                                     setFullYaml(payload.yaml);
-                                    setValidatedSerials([]); // Clear validated serials on new generation
+                                    setFilteredYaml(""); // Clear filtered yaml on new generation
+                                    setValidationResult("");
                                     setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
                                 }
                                 break;
@@ -158,7 +160,7 @@
             const handleSeedEdit = (e) => setState(prev => ({...prev, seed: e.target.value}));
 
             const startGeneration = () => {
-                setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult("");
+                setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult(""); setFilteredYaml("");
                 const config = {
                     seed: state.seed,
                     repositories: state.repositoryData,
@@ -194,6 +196,10 @@
             const resetForm = () => {
                 if(confirm("Are you sure you want to reset all settings to their original defaults?")) {
                     setState(defaultState);
+                    setOutputYaml("");
+                    setFullYaml("");
+                    setFilteredYaml("");
+                    setValidationResult("");
                     setStatusMessage("Settings have been reset to original defaults.");
                 }
             };
@@ -201,21 +207,22 @@
             const [copyText, setCopyText] = useState("Copy");
 
             const copyToClipboard = async () => {
-                const contentToCopy = validatedSerials.length > 0 ? validatedSerials.join('\n') : fullYaml;
+                const contentToCopy = filteredYaml || fullYaml;
                 if (contentToCopy) {
                     await navigator.clipboard.writeText(contentToCopy);
                     setCopyText("Copied!");
                     setTimeout(() => setCopyText("Copy"), 2000);
                 }
             };
+
             const downloadYAML = () => {
-                const isValidated = validatedSerials.length > 0;
-                const contentToDownload = isValidated ? validatedSerials.join('\n') : fullYaml;
+                const hasFilteredContent = !!filteredYaml;
+                const contentToDownload = filteredYaml || fullYaml;
                 if (!contentToDownload) return;
-                const blob = new Blob([contentToDownload], { type: isValidated ? 'text/plain;charset=utf-8;' : 'text/yaml;charset=utf-8;' });
+                const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = isValidated ? "validated_serials.txt" : "generated_serials.yaml";
+                link.download = hasFilteredContent ? "filtered_serials.yaml" : "generated_serials.yaml";
                 link.click();
                 URL.revokeObjectURL(link.href);
             };
