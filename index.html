@@ -127,80 +127,10 @@
 				const workerRef = useRef(null);
 				const chartRef = useRef(null);
 
-				const getSerialTail = (serial) => {
-					const match = serial.match(/^(@U[^!]*!)/);
-					if (match && match[0]) {
-						return serial.substring(match[0].length);
-					}
-					return serial.substring(10);
-				};
+				const updateChart = (chartData) => {
+					if (!state.generateStats || !chartData) return;
 
-				const calculateHighValuePartsStats = (serials, minPartSize, maxPartSize) => {
-					const frequencyMap = new Map();
-					const tails = serials.map(getSerialTail).filter((t) => t);
-
-					// 1. Find all repeating substrings
-					for (let size = minPartSize; size <= maxPartSize; size++) {
-						for (const tail of tails) {
-							if (tail.length < size) continue;
-							for (let i = 0; i <= tail.length - size; i++) {
-								const fragment = tail.substring(i, i + size);
-								frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
-							}
-						}
-					}
-
-					let parts = [...frequencyMap.entries()].filter(([, count]) => count > 1).map(([part]) => part);
-
-					// 2. Consolidate overlapping and contained parts
-					let changed = true;
-					while (changed) {
-						changed = false;
-						const consolidated = new Set();
-						parts.sort((a, b) => b.length - a.length);
-
-						for (const part of parts) {
-							let isContained = false;
-							for (const biggerPart of consolidated) {
-								if ((biggerPart + biggerPart).includes(part)) {
-									isContained = true;
-									break;
-								}
-							}
-							if (!isContained) {
-								consolidated.add(part);
-							}
-						}
-
-						if (consolidated.size !== parts.length) {
-							parts = [...consolidated];
-							changed = true;
-						}
-					}
-
-					// 3. Return consolidated parts with their original frequencies for the chart
-					const finalParts = new Map();
-					for (const part of parts) {
-						finalParts.set(part, frequencyMap.get(part));
-					}
-
-					return [...finalParts.entries()];
-				};
-
-				const updateChart = (serials) => {
-					if (!state.generateStats) return;
-
-					const highValueParts = calculateHighValuePartsStats(serials, state.rules.minPart, state.rules.maxPart);
-
-					let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
-
-					const maxBars = 200;
-					if (sortedParts.length > maxBars) {
-						sortedParts = sortedParts.slice(0, maxBars);
-					}
-
-					const labels = sortedParts.map((p) => p[0]);
-					const data = sortedParts.map((p) => p[1]);
+					const { labels, data } = chartData;
 
 					const container = document.getElementById('chartContainer');
 					if (container) {
@@ -261,8 +191,8 @@
 										const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
 										setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
 										setOutputYaml(payload.validatedYaml || ''); // Show filtered result in textarea
-										if (state.generateStats && payload.validatedSerials) {
-											updateChart(payload.validatedSerials);
+										if (state.generateStats && payload.chartData) {
+											updateChart(payload.chartData);
 										}
 									} else {
 										setIsGenerating(false);
@@ -271,8 +201,8 @@
 										setFilteredYaml(''); // Clear filtered yaml on new generation
 										setValidationResult('');
 										setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-										if (state.generateStats && payload.serials) {
-											updateChart(payload.serials.map((s) => s.serial));
+										if (state.generateStats && payload.chartData) {
+											updateChart(payload.chartData);
 										}
 									}
 									break;
@@ -603,7 +533,14 @@
 										onClick={() =>
 											workerRef.current.postMessage({
 												type: 'validate',
-												payload: { yaml: fullYaml, seed: state.seed, validationChars: state.validationChars },
+												payload: {
+													yaml: fullYaml,
+													seed: state.seed,
+													validationChars: state.validationChars,
+													generateStats: state.generateStats,
+													minPart: state.rules.minPart,
+													maxPart: state.rules.maxPart,
+												},
 											})
 										}
 										className={btnClasses.secondary}

@@ -1,5 +1,6 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
 // Definitive version with classic TG4 "Targeted Mutation" restored.
+// Performance Fix: All statistical calculations are now handled in the worker.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = '@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U';
@@ -194,6 +195,68 @@ function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
 	return parts.sort((a, b) => b.length - a.length);
 }
 
+// --- STATS FUNCTIONS (MOVED FROM UI) ---
+function getSerialTail(serial) {
+	const match = serial.match(HEADER_RE);
+	if (match && match[0]) {
+		return serial.substring(match[0].length);
+	}
+	return serial.substring(10);
+}
+
+function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) {
+	const frequencyMap = new Map();
+	const tails = serials.map(getSerialTail).filter((t) => t);
+
+	// 1. Find all repeating substrings
+	for (let size = minPartSize; size <= maxPartSize; size++) {
+		for (const tail of tails) {
+			if (tail.length < size) continue;
+			for (let i = 0; i <= tail.length - size; i++) {
+				const fragment = tail.substring(i, i + size);
+				frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
+			}
+		}
+	}
+
+	let parts = [...frequencyMap.entries()].filter(([, count]) => count > 1).map(([part]) => part);
+
+	// 2. Consolidate overlapping and contained parts
+	let changed = true;
+	while (changed) {
+		changed = false;
+		const consolidated = new Set();
+		parts.sort((a, b) => b.length - a.length);
+
+		for (const part of parts) {
+			let isContained = false;
+			for (const biggerPart of consolidated) {
+				if ((biggerPart + biggerPart).includes(part)) {
+					isContained = true;
+					break;
+				}
+			}
+			if (!isContained) {
+				consolidated.add(part);
+			}
+		}
+
+		if (consolidated.size !== parts.length) {
+			parts = [...consolidated];
+			changed = true;
+		}
+	}
+
+	// 3. Return consolidated parts with their original frequencies for the chart
+	const finalParts = new Map();
+	for (const part of parts) {
+		finalParts.set(part, frequencyMap.get(part));
+	}
+
+	return [...finalParts.entries()];
+}
+
+
 // --- INTELLIGENT MUTATION ALGORITHMS ---
 function generateAppendMutation(baseTail, finalLength, protectedStartLength) {
 	const startPart = baseTail.substring(0, protectedStartLength);
@@ -365,7 +428,20 @@ self.onmessage = async function (e) {
 	const { type, payload } = e.data;
 	if (type === 'validate') {
 		const validationData = filterSerials(payload.yaml, payload.seed, payload.validationChars);
-		self.postMessage({ type: 'complete', payload: validationData });
+		let chartData = null;
+		if (payload.generateStats && validationData.validatedSerials && validationData.validatedSerials.length > 0) {
+			const highValueParts = calculateHighValuePartsStats(validationData.validatedSerials, payload.minPart, payload.maxPart);
+			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
+			const maxBars = 200;
+			if (sortedParts.length > maxBars) {
+				sortedParts = sortedParts.slice(0, maxBars);
+			}
+			chartData = {
+				labels: sortedParts.map((p) => p[0]),
+				data: sortedParts.map((p) => p[1]),
+			};
+		}
+		self.postMessage({ type: 'complete', payload: { ...validationData, chartData } });
 		return;
 	}
 
@@ -501,6 +577,21 @@ self.onmessage = async function (e) {
 		});
 		const truncatedYaml = truncatedLines.join('\n');
 
+		let chartData = null;
+		if (config.generateStats && generatedSerials.length > 0) {
+			const serialStrings = generatedSerials.map((s) => s.serial);
+			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
+			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
+			const maxBars = 200;
+			if (sortedParts.length > maxBars) {
+				sortedParts = sortedParts.slice(0, maxBars);
+			}
+			chartData = {
+				labels: sortedParts.map((p) => p[0]),
+				data: sortedParts.map((p) => p[1]),
+			};
+		}
+
 		self.postMessage({
 			type: 'complete',
 			payload: {
@@ -509,7 +600,7 @@ self.onmessage = async function (e) {
 				uniqueCount: generatedSerials.length,
 				totalRequested: totalRequested,
 				validationResult: null,
-				serials: config.generateStats ? generatedSerials : null,
+				chartData: chartData,
 			},
 		});
 	} catch (error) {
