@@ -184,13 +184,18 @@
 									setProgress((payload.processed / payload.total) * 100);
 									setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
 									break;
+								case 'stats_complete':
+									if (state.generateStats && payload.chartData) {
+										updateChart(payload.chartData);
+									}
+									break;
 								case 'complete':
 									if (payload.validationResult) {
 										setValidationResult(payload.validationResult);
 										setFilteredYaml(payload.validatedYaml || '');
 										const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
 										setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
-										setOutputYaml(payload.validatedYaml || ''); // Show filtered result in textarea
+										setOutputYaml(payload.validatedYaml || '');
 										if (state.generateStats && payload.chartData) {
 											updateChart(payload.chartData);
 										}
@@ -198,12 +203,9 @@
 										setIsGenerating(false);
 										setOutputYaml(payload.truncatedYaml);
 										setFullYaml(payload.yaml);
-										setFilteredYaml(''); // Clear filtered yaml on new generation
+										setFilteredYaml('');
 										setValidationResult('');
 										setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-										if (state.generateStats && payload.chartData) {
-											updateChart(payload.chartData);
-										}
 									}
 									break;
 								case 'error':

@@ -1,6 +1,7 @@
 // --- WORKER SCRIPT (generator.worker.js) ---
 // Definitive version with classic TG4 "Targeted Mutation" restored.
-// Performance Fix: All statistical calculations are now handled in the worker.
+// Performance Fix: All statistical calculations are handled in the worker.
+// UI Fix: YAML is sent immediately, stats are sent in a separate message.
 
 // --- CONSTANTS ---
 const DEFAULT_SEED = '@Uge8pzm/)}}!t8IjFw;$d;-DH;sYyj@*ifd*pw6Jyw*U';
@@ -468,10 +469,6 @@ self.onmessage = async function (e) {
 			.filter((s) => s.startsWith('@U'))
 			.map((s) => splitHeaderTail(s)[1]);
 		if (selectedRepoTails.length === 0) {
-			self.postMessage({
-				type: 'warning',
-				payload: `Selected **${config.itemType}** Repo is empty. Using Base Seed as parent.`,
-			});
 			selectedRepoTails.push(baseTail);
 		}
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
@@ -503,12 +500,9 @@ self.onmessage = async function (e) {
 
 				let mutatedTail;
 
-				// --- MODIFIED LOGIC FOR TG4 ---
 				if (item.tg === 'TG4') {
-					// Classic TG4: Targeted mutation on the original, unmodified base tail. Length is preserved.
 					mutatedTail = generateTargetedMutation(baseTail, config.itemType);
 				} else {
-					// Standard Mutation for NEW, TG1, TG2, TG3
 					const mutableZone = baseTail.length - protectedStartLength;
 					if (item.tg === 'NEW' || mutableZone < config.minChunkSize) {
 						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
@@ -524,7 +518,6 @@ self.onmessage = async function (e) {
 						);
 					}
 
-					// Legendary Stacking Logic ONLY for TG3
 					if (item.tg === 'TG3' && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
 						const part = randomChoice(highValueParts).slice();
 						const availableMutableSpace = dynamicTargetLength - protectedStartLength;
@@ -577,21 +570,8 @@ self.onmessage = async function (e) {
 		});
 		const truncatedYaml = truncatedLines.join('\n');
 
-		let chartData = null;
-		if (config.generateStats && generatedSerials.length > 0) {
-			const serialStrings = generatedSerials.map((s) => s.serial);
-			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
-			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
-			const maxBars = 200;
-			if (sortedParts.length > maxBars) {
-				sortedParts = sortedParts.slice(0, maxBars);
-			}
-			chartData = {
-				labels: sortedParts.map((p) => p[0]),
-				data: sortedParts.map((p) => p[1]),
-			};
-		}
-
+		// --- DECOUPLED MESSAGES ---
+		// 1. Send YAML data immediately for UI responsiveness
 		self.postMessage({
 			type: 'complete',
 			payload: {
@@ -600,9 +580,27 @@ self.onmessage = async function (e) {
 				uniqueCount: generatedSerials.length,
 				totalRequested: totalRequested,
 				validationResult: null,
-				chartData: chartData,
 			},
 		});
+
+		// 2. If stats are enabled, calculate and send them in a separate message
+		if (config.generateStats && generatedSerials.length > 0) {
+			const serialStrings = generatedSerials.map((s) => s.serial);
+			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
+			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
+			const maxBars = 200;
+			if (sortedParts.length > maxBars) {
+				sortedParts = sortedParts.slice(0, maxBars);
+			}
+			const chartData = {
+				labels: sortedParts.map((p) => p[0]),
+				data: sortedParts.map((p) => p[1]),
+			};
+			self.postMessage({
+				type: 'stats_complete',
+				payload: { chartData: chartData },
+			});
+		}
 	} catch (error) {
 		console.error('Worker Error:', error);
 		self.postMessage({ type: 'error', payload: { message: error.message } });
