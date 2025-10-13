@@ -1,401 +1,659 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serial Mutation Engine v9.8 (Classic Defaults)</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['SF Mono', 'ui-monospace', 'monospace']
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <style>
-        body { background-color: #111827; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        .accordion-summary::-webkit-details-marker { display: none; }
-    </style>
-</head>
-<body class="bg-gray-900 text-gray-200 font-sans">
-    
-    <div id="root"></div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Serial Mutation Engine v9.8 (Classic Defaults)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						fontFamily: {
+							sans: ['Inter', 'sans-serif'],
+							mono: ['SF Mono', 'ui-monospace', 'monospace'],
+						},
+					},
+				},
+			};
+		</script>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+		<style>
+			body {
+				background-color: #111827;
+			}
+			::-webkit-scrollbar {
+				width: 8px;
+			}
+			::-webkit-scrollbar-track {
+				background: #1f2937;
+			}
+			::-webkit-scrollbar-thumb {
+				background: #4b5563;
+				border-radius: 4px;
+			}
+			::-webkit-scrollbar-thumb:hover {
+				background: #6b7280;
+			}
+			.accordion-summary::-webkit-details-marker {
+				display: none;
+			}
+		</style>
+	</head>
+	<body class="bg-gray-900 text-gray-200 font-sans">
+		<div id="root"></div>
 
-        const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
-            <details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
-                <summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
-                    {title}
-                    <svg className="w-5 h-5 transition-transform transform details-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                </summary>
-                <div className={`${noPadding ? '' : 'p-5 pt-2'} flex flex-col gap-6 flex-grow`}>{children}</div>
-                <style>{`.accordion-summary + .details-arrow { transition: transform 0.2s; } details[open] .details-arrow { transform: rotate(90deg); }`}</style>
-            </details>
-        );
-        
-        const FormGroup = ({ label, children }) => (
-            <div className="flex flex-col gap-2">
-                <label className="font-medium text-gray-400 text-sm">{label}</label>
-                {children}
-            </div>
-        );
+		<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+		<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+		<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        const App = () => {
-            // --- STATE MANAGEMENT WITH ALL ORIGINAL DEFAULTS ---
-            const defaultState = {
-                repositoryData: { 
-                    class_mod: "", 
-                    shield: "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS", 
-                    ordnance: "", 
-                    enhancement: "", 
-                    gun: "", 
-                    repkit: "" 
-                },
-                currentRepo: 'class_mod',
-                seed: "@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc",
-                counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
-                rules: {
-                    targetOffset: 250, // Corrected to emulate original behavior
-                    minProtected: 100, 
-                    maxProtected: 100,
-                    minChunk: 3, 
-                    maxChunk: 7, 
-                    targetChunk: 5,
-                    minPart: 4, 
-                    maxPart: 8, 
-                    legendaryChance: 100
-                },
-                validationChars: 12,
-                generateStats: true
-            };
-            
-            const [state, setState] = useState(() => {
-                const savedState = localStorage.getItem('serialGenState');
-                return savedState ? JSON.parse(savedState) : defaultState;
-            });
-            
-            const [statusMessage, setStatusMessage] = useState("Ready to generate.");
-            const [validationResult, setValidationResult] = useState("");
-            const [progress, setProgress] = useState(0);
-            const [isGenerating, setIsGenerating] = useState(false);
-            const [outputYaml, setOutputYaml] = useState("");
-            const [fullYaml, setFullYaml] = useState("");
-            const [filteredYaml, setFilteredYaml] = useState("");
-            
-            const workerRef = useRef(null);
-            const chartRef = useRef(null);
+		<script type="text/babel">
+			const { useState, useEffect, useRef } = React;
 
-            const calculateHighValuePartsStats = (serials, minPartSize, maxPartSize) => {
-                const frequencyMap = new Map();
-                const tails = serials.map(s => s.split('!')[1]).filter(t => t);
-                for (let size = minPartSize; size <= maxPartSize; size++) {
-                    for (const tail of tails) {
-                        if (tail.length < size) continue;
-                        for (let i = 0; i <= tail.length - size; i++) {
-                            const fragment = tail.substring(i, i + size);
-                            frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
-                        }
-                    }
-                }
-                return [...frequencyMap.entries()].filter(([, count]) => count > 1);
-            };
+			const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
+				<details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
+					<summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
+						{title}
+						<svg
+							className="w-5 h-5 transition-transform transform details-arrow"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+						</svg>
+					</summary>
+					<div className={`${noPadding ? '' : 'p-5 pt-2'} flex flex-col gap-6 flex-grow`}>{children}</div>
+					<style>{`.accordion-summary + .details-arrow { transition: transform 0.2s; } details[open] .details-arrow { transform: rotate(90deg); }`}</style>
+				</details>
+			);
 
-            const updateChart = (serials) => {
-                if (!state.generateStats) return;
+			const FormGroup = ({ label, children }) => (
+				<div className="flex flex-col gap-2">
+					<label className="font-medium text-gray-400 text-sm">{label}</label>
+					{children}
+				</div>
+			);
 
-                const highValueParts = calculateHighValuePartsStats(serials, state.rules.minPart, state.rules.maxPart);
+			const App = () => {
+				// --- STATE MANAGEMENT WITH ALL ORIGINAL DEFAULTS ---
+				const defaultState = {
+					repositoryData: {
+						class_mod: '',
+						shield:
+							'@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
+						ordnance: '',
+						enhancement: '',
+						gun: '',
+						repkit: '',
+					},
+					currentRepo: 'class_mod',
+					seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
+					counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
+					rules: {
+						targetOffset: 250, // Corrected to emulate original behavior
+						minProtected: 100,
+						maxProtected: 100,
+						minChunk: 3,
+						maxChunk: 7,
+						targetChunk: 5,
+						minPart: 4,
+						maxPart: 8,
+						legendaryChance: 100,
+					},
+					validationChars: 12,
+					generateStats: true,
+				};
 
-                const sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
-                const labels = sortedParts.map(p => p[0]);
-                const data = sortedParts.map(p => p[1]);
+				const [state, setState] = useState(() => {
+					const savedState = localStorage.getItem('serialGenState');
+					return savedState ? JSON.parse(savedState) : defaultState;
+				});
 
-                const ctx = document.getElementById('statsChart').getContext('2d');
-                if (chartRef.current) {
-                    chartRef.current.destroy();
-                }
-                chartRef.current = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Legendary Part Distribution',
-                            data: data,
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            };
+				const [statusMessage, setStatusMessage] = useState('Ready to generate.');
+				const [validationResult, setValidationResult] = useState('');
+				const [progress, setProgress] = useState(0);
+				const [isGenerating, setIsGenerating] = useState(false);
+				const [outputYaml, setOutputYaml] = useState('');
+				const [fullYaml, setFullYaml] = useState('');
+				const [filteredYaml, setFilteredYaml] = useState('');
 
-            useEffect(() => {
-                localStorage.setItem('serialGenState', JSON.stringify(state));
-                if (!workerRef.current) {
-                    workerRef.current = new Worker('generator.worker.js');
-                    workerRef.current.onmessage = (e) => {
-                        const { type, payload } = e.data;
-                        switch(type) {
-                            case 'progress':
-                                setProgress((payload.processed / payload.total) * 100);
-                                setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
-                                break;
-                            case 'complete':
-                                if (payload.validationResult) {
-                                    setValidationResult(payload.validationResult);
-                                    setFilteredYaml(payload.validatedYaml || "");
-                                    const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
-                                    setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
-                                    setOutputYaml(payload.validatedYaml || ""); // Show filtered result in textarea
-                                    if (state.generateStats && payload.validatedSerials) {
-                                        updateChart(payload.validatedSerials);
-                                    }
-                                } else {
-                                    setIsGenerating(false);
-                                    setOutputYaml(payload.truncatedYaml);
-                                    setFullYaml(payload.yaml);
-                                    setFilteredYaml(""); // Clear filtered yaml on new generation
-                                    setValidationResult("");
-                                    setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-                                    if (state.generateStats && payload.serials) {
-                                        updateChart(payload.serials.map(s => s.serial));
-                                    }
-                                }
-                                break;
-                            case 'error':
-                                setIsGenerating(false);
-                                setStatusMessage(`❌ ERROR: ${payload.message}`);
-                                break;
-                        }
-                    };
-                }
-            }, [state]);
+				const workerRef = useRef(null);
+				const chartRef = useRef(null);
 
-            const handleInputChange = (e) => {
-                const { name, value, type } = e.target;
-                const val = type === 'number' || type === 'range' ? parseInt(value) : value;
-                const [category, key] = name.split('.');
-                setState(prev => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
-            };
-            const handleRepoSelect = (e) => setState(prev => ({ ...prev, currentRepo: e.target.value }));
-            const handleRepoEdit = (e) => setState(prev => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: e.target.value }}));
-            const handleSeedEdit = (e) => setState(prev => ({...prev, seed: e.target.value}));
+				const getSerialTail = (serial) => {
+					const match = serial.match(/^(@U[^!]*!)/);
+					if (match && match[0]) {
+						return serial.substring(match[0].length);
+					}
+					return serial.substring(10);
+				};
 
-            const startGeneration = () => {
-                setIsGenerating(true); setStatusMessage("Sending job..."); setProgress(0); setValidationResult(""); setFilteredYaml("");
-                const config = {
-                    seed: state.seed,
-                    repositories: state.repositoryData,
-                    itemType: state.currentRepo,
-                    newCount: parseInt(state.counts.new),
-                    tg1Count: parseInt(state.counts.tg1),
-                    tg2Count: parseInt(state.counts.tg2),
-                    tg3Count: parseInt(state.counts.tg3),
-                    tg4Count: parseInt(state.counts.tg4),
-                    targetOffset: parseInt(state.rules.targetOffset),
-                    minProtectedPercent: parseInt(state.rules.minProtected),
-                    maxProtectedPercent: parseInt(state.rules.maxProtected),
-                    minChunkSize: parseInt(state.rules.minChunk),
-                    maxChunkSize: parseInt(state.rules.maxChunk),
-                    targetChunkSize: parseInt(state.rules.targetChunk),
-                    minPartSize: parseInt(state.rules.minPart),
-                    maxPartSize: parseInt(state.rules.maxPart),
-                    legendaryChance: parseInt(state.rules.legendaryChance),
-                    gpuBatchSize: 250000,
-                    debugMode: true,
-                    generateStats: state.generateStats
-                };
-                workerRef.current.postMessage({ type: 'generate', payload: config });
-            };
-            
-            const resetForm = () => {
-                if(confirm("Are you sure you want to reset all settings to their original defaults?")) {
-                    setState(defaultState);
-                    setOutputYaml("");
-                    setFullYaml("");
-                    setFilteredYaml("");
-                    setValidationResult("");
-                    setStatusMessage("Settings have been reset to original defaults.");
-                }
-            };
-            
-            const [copyText, setCopyText] = useState("Copy");
+				const calculateHighValuePartsStats = (serials, minPartSize, maxPartSize) => {
+					const frequencyMap = new Map();
+					const tails = serials.map(getSerialTail).filter((t) => t);
 
-            const copyToClipboard = async () => {
-                const contentToCopy = filteredYaml || fullYaml;
-                if (contentToCopy) {
-                    await navigator.clipboard.writeText(contentToCopy);
-                    setCopyText("Copied!");
-                    setTimeout(() => setCopyText("Copy"), 2000);
-                }
-            };
+					// 1. Find all repeating substrings
+					for (let size = minPartSize; size <= maxPartSize; size++) {
+						for (const tail of tails) {
+							if (tail.length < size) continue;
+							for (let i = 0; i <= tail.length - size; i++) {
+								const fragment = tail.substring(i, i + size);
+								frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
+							}
+						}
+					}
 
-            const downloadYAML = () => {
-                const hasFilteredContent = !!filteredYaml;
-                const contentToDownload = filteredYaml || fullYaml;
-                if (!contentToDownload) return;
-                const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = hasFilteredContent ? "filtered_serials.yaml" : "generated_serials.yaml";
-                link.click();
-                URL.revokeObjectURL(link.href);
-            };
+					let parts = [...frequencyMap.entries()].filter(([, count]) => count > 1).map(([part]) => part);
 
-            const inputClasses = "w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm";
-            const btnClasses = {
-                primary: "py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed",
-                secondary: "py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50",
-                tertiary: "py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all"
-            };
+					// 2. Consolidate overlapping and contained parts
+					let changed = true;
+					while (changed) {
+						changed = false;
+						const consolidated = new Set();
+						parts.sort((a, b) => b.length - a.length);
 
-            return (
-                <div className="p-4 md:p-8">
-                    <header className="text-center mb-12">
-                        <h1 className="text-4xl md:text-5xl font-bold text-gray-100">Serial Mutation <span className="text-blue-400">Engine</span></h1>
-                        <p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
-                    </header>
-                    <main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-7xl mx-auto">
-                        <div className="flex flex-col gap-4">
-                            <Accordion title="📦 Repository & Base Seed" open={true}>
-                                <FormGroup label="Active Repository">
-                                    <div class="flex items-center gap-2">
-                                        <select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
-                                            <option value="class_mod">Class Mod</option>
-                                            <option value="shield">Shield</option>
-                                            <option value="ordnance">Ordnance</option>
-                                            <option value="enhancement">Enhancement</option>
-                                            <option value="gun">Gun</option>
-                                            <option value="repkit">Repkit</option>
-                                        </select>
-                                        <button onClick={() => setState(prev => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: '' }}))} className={btnClasses.tertiary}>Clear</button>
-                                    </div>
-                                    <textarea className={`${inputClasses} min-h-[120px]`} value={state.repositoryData[state.currentRepo]} onChange={handleRepoEdit} placeholder="Paste serials here..."></textarea>
-                                </FormGroup>
-                                 <FormGroup label="Base Serial Seed">
-                                    <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
-                                </FormGroup>
-                            </Accordion>
-                            <Accordion title="🧬 Mutation Rules" open={true}>
-                                <FormGroup label="Protected Start (%)">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.minProtected" value={state.rules.minProtected} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.maxProtected" value={state.rules.maxProtected} onChange={handleInputChange} className={inputClasses} />
-                                    </div>
-                                </FormGroup>
-                                <FormGroup label="Crossover Chunk Size">
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <input type="number" name="rules.minChunk" value={state.rules.minChunk} onChange={handleInputChange} className={inputClasses} title="The smallest crossover segment size." />
-                                        <input type="number" name="rules.maxChunk" value={state.rules.maxChunk} onChange={handleInputChange} className={inputClasses} title="The largest crossover segment size." />
-                                        <input type="number" name="rules.targetChunk" value={state.rules.targetChunk} onChange={handleInputChange} className={inputClasses} title="The preferred crossover segment size." />
-                                    </div>
-                                </FormGroup>
-                                <FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
-                                    <input type="range" name="rules.legendaryChance" min="0" max="100" value={state.rules.legendaryChance} onChange={handleInputChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
-                                </FormGroup>
-                                <FormGroup label="High-Value Part Size Range">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="number" name="rules.minPart" value={state.rules.minPart} onChange={handleInputChange} className={inputClasses} />
-                                        <input type="number" name="rules.maxPart" value={state.rules.maxPart} onChange={handleInputChange} className={inputClasses} />
-                                    </div>
-                                </FormGroup>
-                                <FormGroup label="Final Tail Length Offset">
-                                    <input type="number" name="rules.targetOffset" value={state.rules.targetOffset} onChange={handleInputChange} className={inputClasses} />
-                                </FormGroup>
-                            </Accordion>
-                            <Accordion title="🔢 Output Counts">
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                    <FormGroup label="NEW"><input type="number" name="counts.new" value={state.counts.new} onChange={handleInputChange} className={inputClasses} /></FormGroup>
-                                    <FormGroup label="TG1"><input type="number" name="counts.tg1" value={state.counts.tg1} onChange={handleInputChange} className={inputClasses} /></FormGroup>
-                                    <FormGroup label="TG2"><input type="number" name="counts.tg2" value={state.counts.tg2} onChange={handleInputChange} className={inputClasses} /></FormGroup>
-                                    <FormGroup label="TG3"><input type="number" name="counts.tg3" value={state.counts.tg3} onChange={handleInputChange} className={inputClasses} /></FormGroup>
-                                    <FormGroup label="TG4"><input type="number" name="counts.tg4" value={state.counts.tg4} onChange={handleInputChange} className={inputClasses} /></FormGroup>
-                                </div>
-                            </Accordion>
+						for (const part of parts) {
+							let isContained = false;
+							for (const biggerPart of consolidated) {
+								if ((biggerPart + biggerPart).includes(part)) {
+									isContained = true;
+									break;
+								}
+							}
+							if (!isContained) {
+								consolidated.add(part);
+							}
+						}
 
-                            <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>Generate Serials</button>
-                                    <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset All</button>
-                                </div>
-                                <div className="flex justify-center">
-                                    <div className="flex items-center">
-                                        <input type="checkbox" id="genStats" name="genStats" checked={state.generateStats} onChange={(e) => setState(prev => ({ ...prev, generateStats: e.target.checked }))} className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
-                                        <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">Generate Legendary Part Statistics</label>
-                                    </div>
-                                </div>
-                                <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center" style={{ whiteSpace: 'pre-line' }}>{statusMessage}</div>
-                                {isGenerating && 
-                                    <div className="w-full bg-gray-700 rounded-full h-2.5">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
-                                    </div>
-                                }
-                            </div>
+						if (consolidated.size !== parts.length) {
+							parts = [...consolidated];
+							changed = true;
+						}
+					}
 
-                            <Accordion title="✔️ Filtering">
-                                <FormGroup label="Characters to Filter">
-                                    <input type="number" name="validationChars" value={state.validationChars} onChange={(e) => setState(prev => ({ ...prev, validationChars: parseInt(e.target.value) }))} className={inputClasses} />
-                                </FormGroup>
-                                <button onClick={() => workerRef.current.postMessage({ type: 'validate', payload: { yaml: fullYaml, seed: state.seed, validationChars: state.validationChars }})} className={btnClasses.secondary}>Filter</button>
-                                {validationResult && <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center whitespace-pre-wrap">{validationResult}</div>}
-                            </Accordion>
-                        </div>
+					// 3. Return consolidated parts with their original frequencies for the chart
+					const finalParts = new Map();
+					for (const part of parts) {
+						finalParts.set(part, frequencyMap.get(part));
+					}
 
-                        <div className="flex flex-col gap-4 h-full">
-                            <Accordion title="📊 Statistics" open={false}>
-                                <canvas id="statsChart"></canvas>
-                            </Accordion>
-                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
-                                <div className="p-4 flex justify-between items-center border-b border-gray-700">
-                                    <h3 className="text-lg font-semibold">📝 YAML Output</h3>
-                                    <div className="flex gap-2">
-                                        <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
-                                        <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
-                                        <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
-                                    </div>
-                                </div>
-                                <div className="p-5 flex-grow">
-                                    <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
-                </div>
-            );
-        };
+					return [...finalParts.entries()];
+				};
 
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(<App />);
-    </script>
-</body>
+				const updateChart = (serials) => {
+					if (!state.generateStats) return;
+
+					const highValueParts = calculateHighValuePartsStats(serials, state.rules.minPart, state.rules.maxPart);
+
+					let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
+
+					const maxBars = 200;
+					if (sortedParts.length > maxBars) {
+						sortedParts = sortedParts.slice(0, maxBars);
+					}
+
+					const labels = sortedParts.map((p) => p[0]);
+					const data = sortedParts.map((p) => p[1]);
+
+					const container = document.getElementById('chartContainer');
+					if (container) {
+						const numBars = labels.length;
+						const defaultBars = 10;
+						if (numBars > defaultBars) {
+							const barWidth = 50; // pixels
+							container.style.width = `${numBars * barWidth}px`;
+						} else {
+							container.style.width = '100%';
+						}
+					}
+
+					const ctx = document.getElementById('statsChart').getContext('2d');
+					if (chartRef.current) {
+						chartRef.current.destroy();
+					}
+					chartRef.current = new Chart(ctx, {
+						type: 'bar',
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									label: 'Legendary Part Distribution',
+									data: data,
+									backgroundColor: 'rgba(54, 162, 235, 0.2)',
+									borderColor: 'rgba(54, 162, 235, 1)',
+									borderWidth: 1,
+								},
+							],
+						},
+						options: {
+							maintainAspectRatio: false,
+							scales: {
+								y: {
+									beginAtZero: true,
+								},
+							},
+						},
+					});
+				};
+
+				useEffect(() => {
+					localStorage.setItem('serialGenState', JSON.stringify(state));
+					if (!workerRef.current) {
+						workerRef.current = new Worker('generator.worker.js');
+						workerRef.current.onmessage = (e) => {
+							const { type, payload } = e.data;
+							switch (type) {
+								case 'progress':
+									setProgress((payload.processed / payload.total) * 100);
+									setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+									break;
+								case 'complete':
+									if (payload.validationResult) {
+										setValidationResult(payload.validationResult);
+										setFilteredYaml(payload.validatedYaml || '');
+										const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
+										setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
+										setOutputYaml(payload.validatedYaml || ''); // Show filtered result in textarea
+										if (state.generateStats && payload.validatedSerials) {
+											updateChart(payload.validatedSerials);
+										}
+									} else {
+										setIsGenerating(false);
+										setOutputYaml(payload.truncatedYaml);
+										setFullYaml(payload.yaml);
+										setFilteredYaml(''); // Clear filtered yaml on new generation
+										setValidationResult('');
+										setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+										if (state.generateStats && payload.serials) {
+											updateChart(payload.serials.map((s) => s.serial));
+										}
+									}
+									break;
+								case 'error':
+									setIsGenerating(false);
+									setStatusMessage(`❌ ERROR: ${payload.message}`);
+									break;
+							}
+						};
+					}
+				}, [state]);
+
+				const handleInputChange = (e) => {
+					const { name, value, type } = e.target;
+					if (type === 'number' && value !== '' && isNaN(parseInt(value, 10))) {
+						return; // Don't update state for invalid number input
+					}
+					const val = type === 'number' && value !== '' ? parseInt(value, 10) : value;
+					const [category, key] = name.split('.');
+					setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
+				};
+				const handleRepoSelect = (e) => setState((prev) => ({ ...prev, currentRepo: e.target.value }));
+				const handleRepoEdit = (e) =>
+					setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: e.target.value } }));
+				const handleSeedEdit = (e) => setState((prev) => ({ ...prev, seed: e.target.value }));
+
+				const startGeneration = () => {
+					setIsGenerating(true);
+					setStatusMessage('Sending job...');
+					setProgress(0);
+					setValidationResult('');
+					setFilteredYaml('');
+					const config = {
+						seed: state.seed,
+						repositories: state.repositoryData,
+						itemType: state.currentRepo,
+						newCount: parseInt(state.counts.new || '0', 10),
+						tg1Count: parseInt(state.counts.tg1 || '0', 10),
+						tg2Count: parseInt(state.counts.tg2 || '0', 10),
+						tg3Count: parseInt(state.counts.tg3 || '0', 10),
+						tg4Count: parseInt(state.counts.tg4 || '0', 10),
+						targetOffset: parseInt(state.rules.targetOffset || '0', 10),
+						minProtectedPercent: parseInt(state.rules.minProtected || '0', 10),
+						maxProtectedPercent: parseInt(state.rules.maxProtected || '0', 10),
+						minChunkSize: parseInt(state.rules.minChunk || '0', 10),
+						maxChunkSize: parseInt(state.rules.maxChunk || '0', 10),
+						targetChunkSize: parseInt(state.rules.targetChunk || '0', 10),
+						minPartSize: parseInt(state.rules.minPart || '0', 10),
+						maxPartSize: parseInt(state.rules.maxPart || '0', 10),
+						legendaryChance: parseInt(state.rules.legendaryChance || '0', 10),
+						gpuBatchSize: 250000,
+						debugMode: true,
+						generateStats: state.generateStats,
+					};
+					workerRef.current.postMessage({ type: 'generate', payload: config });
+				};
+
+				const resetForm = () => {
+					if (confirm('Are you sure you want to reset all settings to their original defaults?')) {
+						setState(defaultState);
+						setOutputYaml('');
+						setFullYaml('');
+						setFilteredYaml('');
+						setValidationResult('');
+						setStatusMessage('Settings have been reset to original defaults.');
+					}
+				};
+
+				const [copyText, setCopyText] = useState('Copy');
+
+				const copyToClipboard = async () => {
+					const contentToCopy = filteredYaml || fullYaml;
+					if (contentToCopy) {
+						await navigator.clipboard.writeText(contentToCopy);
+						setCopyText('Copied!');
+						setTimeout(() => setCopyText('Copy'), 2000);
+					}
+				};
+
+				const downloadYAML = () => {
+					const hasFilteredContent = !!filteredYaml;
+					const contentToDownload = filteredYaml || fullYaml;
+					if (!contentToDownload) return;
+					const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
+					const link = document.createElement('a');
+					link.href = URL.createObjectURL(blob);
+					link.download = hasFilteredContent ? 'filtered_serials.yaml' : 'generated_serials.yaml';
+					link.click();
+					URL.revokeObjectURL(link.href);
+				};
+
+				const inputClasses =
+					'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
+				const btnClasses = {
+					primary:
+						'py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed',
+					secondary:
+						'py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50',
+					tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
+				};
+
+				return (
+					<div className="p-4 md:p-8">
+						<header className="text-center mb-12">
+							<h1 className="text-4xl md:text-5xl font-bold text-gray-100">
+								Serial Mutation <span className="text-blue-400">Engine</span>
+							</h1>
+							<p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
+						</header>
+						<main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-7xl mx-auto">
+							<div className="flex flex-col gap-4">
+								<Accordion title="📦 Repository & Base Seed" open={true}>
+									<FormGroup label="Active Repository">
+										<div className="flex items-center gap-2">
+											{' '}
+											<select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
+												<option value="class_mod">Class Mod</option>
+												<option value="shield">Shield</option>
+												<option value="ordnance">Ordnance</option>
+												<option value="enhancement">Enhancement</option>
+												<option value="gun">Gun</option>
+												<option value="repkit">Repkit</option>
+											</select>
+											<button
+												onClick={() =>
+													setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: '' } }))
+												}
+												className={btnClasses.tertiary}
+											>
+												Clear
+											</button>
+										</div>
+										<textarea
+											className={`${inputClasses} min-h-[120px]`}
+											value={state.repositoryData[state.currentRepo]}
+											onChange={handleRepoEdit}
+											placeholder="Paste serials here..."
+										></textarea>
+									</FormGroup>
+									<FormGroup label="Base Serial Seed">
+										<textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
+									</FormGroup>
+								</Accordion>
+								<Accordion title="🧬 Mutation Rules" open={true}>
+									<FormGroup label="Protected Start (%)">
+										<div className="grid grid-cols-2 gap-4">
+											<input
+												type="number"
+												name="rules.minProtected"
+												value={state.rules.minProtected}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+											<input
+												type="number"
+												name="rules.maxProtected"
+												value={state.rules.maxProtected}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</div>
+									</FormGroup>
+									<FormGroup label="Crossover Chunk Size">
+										<div className="grid grid-cols-3 gap-4">
+											<input
+												type="number"
+												name="rules.minChunk"
+												value={state.rules.minChunk}
+												onChange={handleInputChange}
+												className={inputClasses}
+												title="The smallest crossover segment size."
+											/>
+											<input
+												type="number"
+												name="rules.maxChunk"
+												value={state.rules.maxChunk}
+												onChange={handleInputChange}
+												className={inputClasses}
+												title="The largest crossover segment size."
+											/>
+											<input
+												type="number"
+												name="rules.targetChunk"
+												value={state.rules.targetChunk}
+												onChange={handleInputChange}
+												className={inputClasses}
+												title="The preferred crossover segment size."
+											/>
+										</div>
+									</FormGroup>
+									<FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
+										<input
+											type="range"
+											name="rules.legendaryChance"
+											min="0"
+											max="100"
+											value={state.rules.legendaryChance}
+											onChange={handleInputChange}
+											className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+										/>
+									</FormGroup>
+									<FormGroup label="High-Value Part Size Range">
+										<div className="grid grid-cols-2 gap-4">
+											<input
+												type="number"
+												name="rules.minPart"
+												value={state.rules.minPart}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+											<input
+												type="number"
+												name="rules.maxPart"
+												value={state.rules.maxPart}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</div>
+									</FormGroup>
+									<FormGroup label="Final Tail Length Offset">
+										<input
+											type="number"
+											name="rules.targetOffset"
+											value={state.rules.targetOffset}
+											onChange={handleInputChange}
+											className={inputClasses}
+										/>
+									</FormGroup>
+								</Accordion>
+								<Accordion title="🔢 Output Counts">
+									<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+										<FormGroup label="NEW">
+											<input
+												type="number"
+												name="counts.new"
+												value={state.counts.new}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</FormGroup>
+										<FormGroup label="TG1">
+											<input
+												type="number"
+												name="counts.tg1"
+												value={state.counts.tg1}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</FormGroup>
+										<FormGroup label="TG2">
+											<input
+												type="number"
+												name="counts.tg2"
+												value={state.counts.tg2}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</FormGroup>
+										<FormGroup label="TG3">
+											<input
+												type="number"
+												name="counts.tg3"
+												value={state.counts.tg3}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</FormGroup>
+										<FormGroup label="TG4">
+											<input
+												type="number"
+												name="counts.tg4"
+												value={state.counts.tg4}
+												onChange={handleInputChange}
+												className={inputClasses}
+											/>
+										</FormGroup>
+									</div>
+								</Accordion>
+
+								<div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
+									<div className="grid grid-cols-2 gap-4">
+										<button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>
+											Generate Serials
+										</button>
+										<button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>
+											Reset All
+										</button>
+									</div>
+									<div className="flex justify-center">
+										<div className="flex items-center">
+											<input
+												type="checkbox"
+												id="genStats"
+												name="genStats"
+												checked={state.generateStats}
+												onChange={(e) => setState((prev) => ({ ...prev, generateStats: e.target.checked }))}
+												className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+											/>
+											<label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">
+												Generate Legendary Part Statistics
+											</label>
+										</div>
+									</div>
+									<div
+										className="h-10 text-center text-sm text-gray-400 flex items-center justify-center"
+										style={{ whiteSpace: 'pre-line' }}
+									>
+										{statusMessage}
+									</div>
+									{isGenerating && (
+										<div className="w-full bg-gray-700 rounded-full h-2.5">
+											<div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+										</div>
+									)}
+								</div>
+
+								<Accordion title="✔️ Filtering">
+									<FormGroup label="Characters to Filter">
+										<input
+											type="number"
+											name="validationChars"
+											value={state.validationChars}
+											onChange={(e) => setState((prev) => ({ ...prev, validationChars: parseInt(e.target.value) }))}
+											className={inputClasses}
+										/>
+									</FormGroup>
+									<button
+										onClick={() =>
+											workerRef.current.postMessage({
+												type: 'validate',
+												payload: { yaml: fullYaml, seed: state.seed, validationChars: state.validationChars },
+											})
+										}
+										className={btnClasses.secondary}
+									>
+										Filter
+									</button>
+									{validationResult && (
+										<div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center whitespace-pre-wrap">
+											{validationResult}
+										</div>
+									)}
+								</Accordion>
+							</div>
+
+							<div className="flex flex-col gap-4 h-full">
+								<Accordion title="📊 Statistics" open={false}>
+									<div className="overflow-x-auto">
+										<div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
+											<canvas id="statsChart"></canvas>
+										</div>
+									</div>
+								</Accordion>
+								<div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
+									<div className="p-4 flex justify-between items-center border-b border-gray-700">
+										<h3 className="text-lg font-semibold">📝 YAML Output</h3>
+										<div className="flex gap-2">
+											<button onClick={copyToClipboard} className={btnClasses.tertiary}>
+												{copyText}
+											</button>
+											<button onClick={downloadYAML} className={btnClasses.tertiary}>
+												Download
+											</button>
+											<button onClick={() => setOutputYaml('')} className={btnClasses.tertiary}>
+												Clear
+											</button>
+										</div>
+									</div>
+									<div className="p-5 flex-grow">
+										<textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
+									</div>
+								</div>
+							</div>
+						</main>
+					</div>
+				);
+			};
+
+			const container = document.getElementById('root');
+			const root = ReactDOM.createRoot(container);
+			root.render(<App />);
+		</script>
+	</body>
 </html>
