@@ -120,20 +120,15 @@
                         }
                     }
                 }
-                return [...frequencyMap.entries()].filter(([, count]) => count > 1).map(entry => entry[0]);
+                return [...frequencyMap.entries()].filter(([, count]) => count > 1);
             };
 
             const updateChart = (serials) => {
                 if (!state.generateStats) return;
 
-                const partCounts = {};
                 const highValueParts = calculateHighValuePartsStats(serials, state.rules.minPart, state.rules.maxPart);
 
-                highValueParts.forEach(part => {
-                    partCounts[part] = (partCounts[part] || 0) + 1;
-                });
-
-                const sortedParts = Object.entries(partCounts).sort((a, b) => b[1] - a[1]);
+                const sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
                 const labels = sortedParts.map(p => p[0]);
                 const data = sortedParts.map(p => p[1]);
 
