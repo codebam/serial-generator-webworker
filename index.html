@@ -353,12 +353,10 @@
                                     <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>Reset All</button>
                                 </div>
                                 <div className="flex justify-center">
-                                    <FormGroup label="Generate Legendary Part Statistics">
-                                        <div className="flex items-center">
-                                            <input type="checkbox" id="genStats" name="genStats" checked={state.generateStats} onChange={(e) => setState(prev => ({ ...prev, generateStats: e.target.checked }))} className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
-                                            <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">Enable</label>
-                                        </div>
-                                    </FormGroup>
+                                    <div className="flex items-center">
+                                        <input type="checkbox" id="genStats" name="genStats" checked={state.generateStats} onChange={(e) => setState(prev => ({ ...prev, generateStats: e.target.checked }))} className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
+                                        <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">Generate Legendary Part Statistics</label>
+                                    </div>
                                 </div>
                                 <div className="h-10 text-center text-sm text-gray-400 flex items-center justify-center" style={{ whiteSpace: 'pre-line' }}>{statusMessage}</div>
                                 {isGenerating && 
@@ -381,18 +379,19 @@
                             <Accordion title="📊 Statistics" open={false}>
                                 <canvas id="statsChart"></canvas>
                             </Accordion>
-                            <Accordion title="📝 YAML Output" open={true} className="flex-grow" noPadding={true}>
-                                <div className="p-5 pt-2 flex flex-col flex-grow">
-                                    <div className="flex justify-end items-center">
-                                        <div class="flex gap-2">
-                                            <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
-                                            <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
-                                            <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
-                                        </div>
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
+                                <div className="p-4 flex justify-between items-center border-b border-gray-700">
+                                    <h3 className="text-lg font-semibold">📝 YAML Output</h3>
+                                    <div className="flex gap-2">
+                                        <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
+                                        <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
+                                        <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
                                     </div>
-                                    <textarea className={`${inputClasses} flex-grow mt-2`} readOnly value={outputYaml}></textarea>
                                 </div>
-                            </Accordion>
+                                <div className="p-5 flex-grow">
+                                    <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
+                                </div>
+                            </div>
                         </div>
                     </main>
                 </div>
