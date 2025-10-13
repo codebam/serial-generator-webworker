@@ -123,11 +123,15 @@
                                 setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
                                 break;
                             case 'complete':
-                                setIsGenerating(false);
-                                setOutputYaml(payload.truncatedYaml);
-                                setFullYaml(payload.yaml);
-                                setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-                                if (payload.validationResult) setValidationResult(payload.validationResult);
+                                if (payload.validationResult) {
+                                    setValidationResult(payload.validationResult);
+                                    setStatusMessage("Validation complete.");
+                                } else {
+                                    setIsGenerating(false);
+                                    setOutputYaml(payload.truncatedYaml);
+                                    setFullYaml(payload.yaml);
+                                    setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+                                }
                                 break;
                             case 'error':
                                 setIsGenerating(false);
@@ -189,7 +193,15 @@
                 }
             };
             
-            const copyToClipboard = async () => { if(fullYaml) await navigator.clipboard.writeText(fullYaml); };
+            const [copyText, setCopyText] = useState("Copy");
+
+            const copyToClipboard = async () => {
+                if(fullYaml) {
+                    await navigator.clipboard.writeText(fullYaml);
+                    setCopyText("Copied!");
+                    setTimeout(() => setCopyText("Copy"), 2000);
+                }
+            };
             const downloadYAML = () => {
                 if(!fullYaml) return;
                 const blob = new Blob([fullYaml], { type: 'text/yaml;charset=utf-8;' });
@@ -217,18 +229,24 @@
                         <div className="flex flex-col gap-4">
                             <Accordion title="📦 Repository & Base Seed" open={true}>
                                 <FormGroup label="Active Repository">
-                                    <select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
-                                        <option value="class_mod">Class Mod</option>
-                                        <option value="shield">Shield</option>
-                                        <option value="ordnance">Ordnance</option>
-                                        <option value="enhancement">Enhancement</option>
-                                        <option value="gun">Gun</option>
-                                        <option value="repkit">Repkit</option>
-                                    </select>
+                                    <div class="flex items-center gap-2">
+                                        <select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
+                                            <option value="class_mod">Class Mod</option>
+                                            <option value="shield">Shield</option>
+                                            <option value="ordnance">Ordnance</option>
+                                            <option value="enhancement">Enhancement</option>
+                                            <option value="gun">Gun</option>
+                                            <option value="repkit">Repkit</option>
+                                        </select>
+                                        <button onClick={() => setState(prev => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: '' }}))} className={btnClasses.tertiary}>Clear</button>
+                                    </div>
                                     <textarea className={`${inputClasses} min-h-[120px]`} value={state.repositoryData[state.currentRepo]} onChange={handleRepoEdit} placeholder="Paste serials here..."></textarea>
                                 </FormGroup>
                                 <FormGroup label="Legendary Perk Repository">
-                                    <textarea className={`${inputClasses} min-h-[120px]`} name="rules.legendaryPerkRepo" value={state.rules.legendaryPerkRepo} onChange={handleInputChange} placeholder="Paste legendary perk serials here..."></textarea>
+                                    <div class="flex items-center gap-2">
+                                        <textarea className={`${inputClasses} min-h-[120px]`} name="rules.legendaryPerkRepo" value={state.rules.legendaryPerkRepo} onChange={handleInputChange} placeholder="Paste legendary perk serials here..."></textarea>
+                                        <button onClick={() => setState(prev => ({ ...prev, rules: { ...prev.rules, legendaryPerkRepo: '' }}))} className={btnClasses.tertiary}>Clear</button>
+                                    </div>
                                 </FormGroup>
                                  <FormGroup label="Base Serial Seed">
                                     <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
@@ -312,9 +330,11 @@
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-5 flex flex-col h-full min-h-[80vh]">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-semibold">YAML Output</h2>
-                                <div className="flex gap-2">
-                                    <button onClick={copyToClipboard} className={btnClasses.tertiary}>Copy</button>
+                                <div class="flex gap-2">
+                                    <button onClick={copyToClipboard} className={btnClasses.tertiary}>{copyText}</button>
                                     <button onClick={downloadYAML} className={btnClasses.tertiary}>Download</button>
+                                    <button onClick={() => workerRef.current.postMessage({ type: 'validate', payload: { yaml: fullYaml, seed: state.seed }})} className={btnClasses.tertiary}>Validate</button>
+                                    <button onClick={() => setOutputYaml("")} className={btnClasses.tertiary}>Clear</button>
                                 </div>
                              </div>
                              <textarea className={`${inputClasses} flex-grow`} readOnly value={outputYaml}></textarea>

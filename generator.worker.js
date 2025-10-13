@@ -22,13 +22,103 @@ const MUTATION_INTENSITY = { "light": 0.3, "medium": 0.6, "heavy": 0.9 };
 let gpuDevice = null;
 let randomBuffer;
 let randomIndex = 0;
-const getRandom = () => randomBuffer[randomIndex++];
+
+function getNextRandom() {
+    if (randomIndex >= randomBuffer.length) {
+        console.warn("Random buffer depleted. Consider increasing gpuBatchSize.");
+        randomIndex = 0; // Reset to avoid crashing, but this is not ideal
+    }
+    return randomBuffer[randomIndex++];
+}
+
+
 
 // --- WebGPU & UTILITY FUNCTIONS ---
-async function setupWebGPU() { if (typeof navigator === 'undefined' || !navigator.gpu) { console.warn("WebGPU not supported. Falling back to Math.random()."); return null; } try { const adapter = await navigator.gpu.requestAdapter(); if (!adapter) { console.warn("No appropriate GPUAdapter found. Falling back."); return null; } const device = await adapter.requestDevice(); gpuDevice = device; return device; } catch (error) { console.error("Failed to initialize WebGPU:", error); gpuDevice = null; return null; } }
-async function generateRandomNumbersOnGPU(count) { if (!gpuDevice) { console.log(`Generating ${count} random numbers using CPU.`); randomBuffer = new Float32Array(count); for (let i = 0; i < count; i++) { randomBuffer[i] = Math.random(); } randomIndex = 0; return; } console.log(`Generating batch of ${count} random numbers using GPU.`); const shaderCode = `struct Uniforms { time_seed: f32, }; struct Numbers { data: array<f32>, }; @group(0) @binding(0) var<storage, read_write> outputBuffer: Numbers; @group(0) @binding(1) var<uniform> uniforms: Uniforms; fn pcg(seed_in: u32) -> u32 { var state = seed_in * 747796405u + 2891336453u; let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u; return (word >> 22u) ^ word; } @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) global_id: vec3<u32>) { let index = global_id.x; if (index >= u32(arrayLength(&outputBuffer.data))) { return; } let seed = u32(global_id.x) * 1664525u + u32(uniforms.time_seed); outputBuffer.data[index] = f32(pcg(seed)) / 4294967429.0; }`; const shaderModule = gpuDevice.createShaderModule({ code: shaderCode }); const pipeline = gpuDevice.createComputePipeline({ layout: 'auto', compute: { module: shaderModule, entryPoint: 'main' }}); const outputBufferSize = count * Float32Array.BYTES_PER_ELEMENT; const outputGPUBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC }); const uniformBuffer = gpuDevice.createBuffer({ size: 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }); gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Float32Array([performance.now()])); const bindGroup = gpuDevice.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: outputGPUBuffer } }, { binding: 1, resource: { buffer: uniformBuffer } }]}); const commandEncoder = gpuDevice.createCommandEncoder(); const passEncoder = commandEncoder.beginComputePass(); passEncoder.setPipeline(pipeline); passEncoder.setBindGroup(0, bindGroup); passEncoder.dispatchWorkgroups(Math.ceil(count / 64)); passEncoder.end(); const stagingBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }); commandEncoder.copyBufferToBuffer(outputGPUBuffer, 0, stagingBuffer, 0, outputBufferSize); gpuDevice.queue.submit([commandEncoder.finish()]); await stagingBuffer.mapAsync(GPUMapMode.READ); const data = stagingBuffer.getMappedRange(); randomBuffer = new Float32Array(data.slice(0)); stagingBuffer.unmap(); outputGPUBuffer.destroy(); stagingBuffer.destroy(); uniformBuffer.destroy(); randomIndex = 0; }
-function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Math.floor(getRandom() * (max - min + 1)) + min; }
-function randomChoice(arr) { return arr[Math.floor(getRandom() * arr.length)]; }
+async function setupWebGPU() {
+    if (typeof navigator === 'undefined' || !navigator.gpu) {
+        console.warn("WebGPU not supported. Falling back to crypto.getRandomValues.");
+        return null;
+    }
+    try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+            console.warn("No appropriate GPUAdapter found. Falling back.");
+            return null;
+        }
+        const device = await adapter.requestDevice();
+        gpuDevice = device;
+        return device;
+    } catch (error) {
+        console.error("Failed to initialize WebGPU:", error);
+        gpuDevice = null;
+        return null;
+    }
+}
+async function generateRandomNumbersOnGPU(count) {
+    if (!gpuDevice) {
+        console.log(`Generating ${count} random numbers using CPU (crypto.getRandomValues).`);
+        randomBuffer = new Float32Array(count);
+        const maxChunkSize = 16384; // 65536 bytes / 4 bytes per float
+        let offset = 0;
+
+        while (offset < count) {
+            const chunkSize = Math.min(maxChunkSize, count - offset);
+            const randomValues = new Uint32Array(chunkSize);
+            crypto.getRandomValues(randomValues);
+            for (let i = 0; i < chunkSize; i++) {
+                randomBuffer[offset + i] = randomValues[i] / 0xFFFFFFFF;
+            }
+            offset += chunkSize;
+        }
+
+        randomIndex = 0;
+        return;
+    }    console.log(`Generating batch of ${count} random numbers using GPU.`);
+    const shaderCode = `
+        struct Uniforms { time_seed: f32, };
+        struct Numbers { data: array<f32>, };
+        @group(0) @binding(0) var<storage, read_write> outputBuffer: Numbers;
+        @group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+        fn pcg(seed_in: u32) -> u32 {
+            var state = seed_in * 747796405u + 2891336453u;
+            let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+            return (word >> 22u) ^ word;
+        }
+
+        @compute @workgroup_size(64)
+        fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+            let index = global_id.x;
+            if (index >= u32(arrayLength(&outputBuffer.data))) { return; }
+            let seed = u32(global_id.x) * 1664525u + u32(uniforms.time_seed);
+            outputBuffer.data[index] = f32(pcg(seed)) / 4294967429.0;
+        }
+    `;
+    const shaderModule = gpuDevice.createShaderModule({ code: shaderCode });
+    const pipeline = gpuDevice.createComputePipeline({ layout: 'auto', compute: { module: shaderModule, entryPoint: 'main' }});
+    const outputBufferSize = count * Float32Array.BYTES_PER_ELEMENT;
+    const outputGPUBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    const uniformBuffer = gpuDevice.createBuffer({ size: 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    gpuDevice.queue.writeBuffer(uniformBuffer, 0, new Float32Array([performance.now()]));
+    const bindGroup = gpuDevice.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: outputGPUBuffer } }, { binding: 1, resource: { buffer: uniformBuffer } }]});
+    const commandEncoder = gpuDevice.createCommandEncoder();
+    const passEncoder = commandEncoder.beginComputePass();
+    passEncoder.setPipeline(pipeline);
+    passEncoder.setBindGroup(0, bindGroup);
+    const workgroupCount = Math.ceil(count / 64);
+    passEncoder.dispatchWorkgroups(workgroupCount);
+    passEncoder.end();
+    const readbackBuffer = gpuDevice.createBuffer({ size: outputBufferSize, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+    commandEncoder.copyBufferToBuffer(outputGPUBuffer, 0, readbackBuffer, 0, outputBufferSize);
+    await gpuDevice.queue.submit([commandEncoder.finish()]);
+    await readbackBuffer.mapAsync(GPUMapMode.READ);
+    const result = new Float32Array(readbackBuffer.getMappedRange());
+    randomBuffer = new Float32Array(result);
+    readbackBuffer.unmap();
+    randomIndex = 0;
+}
+function randomInt(min, max) { if (min > max) [min, max] = [max, min]; return Math.floor(getNextRandom() * (max - min + 1)) + min; }
+function randomChoice(arr) { return arr[Math.floor(getNextRandom() * arr.length)]; }
 function ensureCharset(s) { return [...s].filter(c => ALPHABET.includes(c)).join(''); }
 function splitHeaderTail(serial) { const match = serial.match(HEADER_RE); if (match) return [match[1], serial.substring(match[0].length)]; return [serial.substring(0, 10), serial.substring(10)]; }
 function extractHighValueParts(repoTails, minPartSize, maxPartSize) { const frequencyMap = new Map(); for (let size = minPartSize; size <= maxPartSize; size++) { for (const tail of repoTails) { if (tail.length < size) continue; for (let i = 0; i <= tail.length - size; i++) { const fragment = tail.substring(i, i + size); frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1); } } } const repeatedParts = [...frequencyMap.entries()].filter(([, count]) => count > 1).sort((a, b) => (b[1] !== a[1]) ? b[1] - a[1] : b[0].length - a[0].length); return repeatedParts.map(entry => entry[0]); }
@@ -42,11 +132,54 @@ function performWindowedCrossover(baseTail, parentTail, finalLength, protectedSt
 // --- NEW FUNCTIONS FOR TG4 TARGETED MUTATION ---
 function getItemCharPool(item_type) { switch (item_type) { case 'shield': return SHIELD_CHARS; case 'enhancement': return ENHANCEMENT_CHARS; case 'gun': return GUN_CHARS; case 'repkit': return REPKIT_CHARS; default: return CLASS_MOD_CHARS; } }
 function divideTailIntoParts(tail, num_parts) { const parts = []; if (num_parts <= 0) return parts; const part_size = Math.floor(tail.length / num_parts); for (let i = 0; i < num_parts; i++) { const start = i * part_size; const end = (i === num_parts - 1) ? tail.length : start + part_size; parts.push({ start, end }); } return parts; }
-function generateTargetedMutation(baseTail, item_type) { const num_parts = Math.max(5, Math.floor(baseTail.length / 20)); const target_part_index = randomInt(0, num_parts - 1); const parts = divideTailIntoParts(baseTail, num_parts); if (target_part_index >= parts.length) return baseTail; const { start, end } = parts[target_part_index]; const chars = [...baseTail]; const mutation_rate = MUTATION_INTENSITY[randomChoice(["light", "medium", "heavy"])]; const char_pool = getItemCharPool(item_type); for (let i = start; i < end; i++) { if (getRandom() < mutation_rate) chars[i] = randomChoice(char_pool); } return chars.join(''); }
+function generateTargetedMutation(baseTail, item_type) { const num_parts = Math.max(5, Math.floor(baseTail.length / 20)); const target_part_index = randomInt(0, num_parts - 1); const parts = divideTailIntoParts(baseTail, num_parts); if (target_part_index >= parts.length) return baseTail; const { start, end } = parts[target_part_index]; const chars = [...baseTail]; const mutation_rate = MUTATION_INTENSITY[randomChoice(["light", "medium", "heavy"])]; const char_pool = getItemCharPool(item_type); for (let i = start; i < end; i++) { if (getNextRandom() < mutation_rate) chars[i] = randomChoice(char_pool); } return chars.join(''); }
+
+function validateSerials(yaml, seed) {
+    if (!yaml) return "No YAML content to validate.";
+
+    const lines = yaml.split('\n');
+    const serials = lines
+        .filter(line => line.trim().startsWith("serial:"))
+        .map(line => line.trim().substring(8).replace(/'/g, ""));
+
+    if (serials.length === 0) return "No serials found in the YAML.";
+
+    let invalidHeaderCount = 0;
+    let invalidCharCount = 0;
+    let offSeedCount = 0;
+    const seedPrefix = seed ? seed.substring(0, 12) : null;
+
+    for (const serial of serials) {
+        if (!serial.startsWith('@U')) {
+            invalidHeaderCount++;
+        }
+        for (const char of serial) {
+            if (!ALPHABET.includes(char)) {
+                invalidCharCount++;
+            }
+        }
+        if (seedPrefix && !serial.startsWith(seedPrefix)) {
+            offSeedCount++;
+        }
+    }
+
+    if (invalidHeaderCount === 0 && invalidCharCount === 0 && offSeedCount === 0) {
+        return `Validation successful! All ${serials.length} serials are valid and on-seed.`
+    } else {
+        return `Validation failed. Invalid headers: ${invalidHeaderCount}. Invalid characters: ${invalidCharCount}. Off-seed: ${offSeedCount}.`;
+    }
+}
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
 self.onmessage = async function(e) {
-    if (e.data.type !== 'generate') return;
+    const { type, payload } = e.data;
+    if (type === 'validate') {
+        const validationResult = validateSerials(payload.yaml, payload.seed);
+        self.postMessage({ type: 'complete', payload: { validationResult } });
+        return;
+    }
+
+    if (type !== 'generate') return;
     const config = e.data.payload;
     try {
         if (!gpuDevice) await setupWebGPU();
@@ -74,7 +207,7 @@ self.onmessage = async function(e) {
         for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: "TG2" });
         for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: "TG3" });
         for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: "TG4" });
-        serialsToGenerate.sort(() => getRandom() - 0.5);
+        serialsToGenerate.sort(() => getNextRandom() - 0.5);
 
         const seenSerials = new Set();
         const generatedSerials = [];
@@ -108,7 +241,7 @@ self.onmessage = async function(e) {
                     }
                     
                     // Legendary Stacking Logic ONLY for TG3
-                    if (item.tg === "TG3" && getRandom() < legendaryStackingChance && highValueParts.length > 0) {
+                    if (item.tg === "TG3" && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
                         const part = randomChoice(highValueParts);
                         const availableMutableSpace = dynamicTargetLength - protectedStartLength;
                         if (availableMutableSpace >= part.length) { 
@@ -120,7 +253,7 @@ self.onmessage = async function(e) {
                 }
 
                 // --- NEW LEGENDARY PERK INJECTION ---
-                if (legendaryPerk && getRandom() < legendaryPerkChance) {
+                if (legendaryPerk && getNextRandom() < legendaryPerkChance) {
                     const minInjectionPoint = Math.floor(dynamicTargetLength * (config.legendaryPerkMin / 100));
                     const maxInjectionPoint = Math.floor(dynamicTargetLength * (config.legendaryPerkMax / 100));
                     const injectionPoint = randomInt(minInjectionPoint, maxInjectionPoint);
