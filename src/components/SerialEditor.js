@@ -1,5 +1,4 @@
-import Accordion from './Accordion.js';
-import FormGroup from './FormGroup.js';
+
 
 const { useState, useEffect } = React;
 
@@ -495,4 +494,4 @@ const SerialEditor = () => {
     );
 };
 
-export default SerialEditor;
+window.SerialEditor = SerialEditor;

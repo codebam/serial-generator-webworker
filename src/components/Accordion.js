@@ -17,4 +17,4 @@ const Accordion = ({ title, children, open = false, className = '', noPadding = 
     </details>
 );
 
-export default Accordion;
+window.Accordion = Accordion;

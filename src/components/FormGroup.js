@@ -5,4 +5,4 @@ const FormGroup = ({ label, children }) => (
     </div>
 );
 
-export default FormGroup;
+window.FormGroup = FormGroup;

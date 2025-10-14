@@ -36,4 +36,4 @@ const Dropdown = ({ title, children, btnClasses }) => {
     );
 };
 
-export default Dropdown;
+window.Dropdown = Dropdown;

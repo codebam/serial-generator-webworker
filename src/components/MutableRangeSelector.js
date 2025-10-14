@@ -1,4 +1,4 @@
-import FormGroup from './FormGroup.js';
+
 
 const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, isMerging }) => {
     const handleRangeChange = (e) => {
@@ -66,4 +66,4 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, isMerg
     );
 };
 
-export default MutableRangeSelector;
+window.MutableRangeSelector = MutableRangeSelector;
