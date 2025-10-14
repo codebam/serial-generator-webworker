@@ -1,7 +1,5 @@
 
 
-import FormGroup from './FormGroup.jsx';
-
 const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
     const handleRangeChange = (e) => {
         const { name, value } = e.target;
@@ -65,5 +63,3 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
         </FormGroup>
     );
 };
-
-const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
