@@ -539,11 +539,49 @@ self.onmessage = async function (e) {
 			}
 		};
 
-		const serialsToGenerate = [];
+								const seenSerials = new Set();
 
-		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
+								const generatedSerials = [];
 
-		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
+						
+
+								// Handle NEW serials first to create a clean chain
+
+								let newBaseTail = baseTail;
+
+								for (let i = 0; i < config.newCount; i++) {
+
+									const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+
+									const mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, newBaseTail.length);
+
+									const serial = ensureCharset(baseHeader + mutatedTail);
+
+									if (!seenSerials.has(serial)) {
+
+										seenSerials.add(serial);
+
+										generatedSerials.push({
+
+											serial: serial,
+
+											flag: 0,
+
+											state_flag: 0,
+
+											slot: generatedSerials.length,
+
+										});
+
+										newBaseTail = mutatedTail;
+
+									}
+
+								}
+
+						
+
+								const serialsToGenerate = [];		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
 
 		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
 
@@ -606,9 +644,7 @@ self.onmessage = async function (e) {
 
 						switch (item.tg) {
 
-		                                            		                    case 'NEW':
-		                                            		                        mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, newBaseTail.length);
-		                                            		                        break;
+
 		                    case 'TG1':
 		                        mutatedTail = performWindowedCrossover(
 									baseTail,
@@ -757,11 +793,11 @@ self.onmessage = async function (e) {
 
 					} while (seenSerials.has(serial) && innerAttempts < 20);
 
-			if (!seenSerials.has(serial)) {
-                if (item.tg === 'NEW') {
-                    newBaseTail = mutatedTail;
-                }
-				seenSerials.add(serial);
+						if (!seenSerials.has(serial)) {
+
+			                
+
+							seenSerials.add(serial);
 				const flagValue = TG_FLAGS[item.tg] || 0;
 				generatedSerials.push({
 					serial: serial,
