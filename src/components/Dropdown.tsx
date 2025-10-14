@@ -4,8 +4,6 @@
 
 declare const React: any;
 
-const { useState, useRef, useEffect } = React;
-
 interface DropdownProps {
     title: string;
     children: React.ReactNode;

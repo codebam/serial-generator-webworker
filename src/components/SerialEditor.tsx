@@ -6,8 +6,6 @@
 
 declare const React: any;
 
-const { useState, useEffect } = React;
-
 const SerialEditor = () => {
     const [serial, setSerial] = useState<string>('');
     const [analysis, setAnalysis] = useState<{

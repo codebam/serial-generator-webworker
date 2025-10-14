@@ -1,9 +1,7 @@
 /// <reference types="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js" />
 declare const React: any;
 declare const ReactDOM: any;
-const useState = React.useState;
-const useEffect = React.useEffect;
-const useRef = React.useRef;
+
 interface AppState {
     repository: string;
     seed: string;
