@@ -121,18 +121,13 @@ uniqueCount: 0,
 
 				switch (item.tg) {
 					                    case 'NEW':
-					                        mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
-					                        break;					case 'TG1':
-						mutatedTail = generateCharacterFlipMutation(baseTail, adjustedMutableStart, adjustedMutableEnd, config.itemType);
+                        mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
+                        break;
+					case 'TG1':
+						mutatedTail = generateCharacterFlipMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
 						break;
 					case 'TG2':
-						mutatedTail = generateSegmentReversalMutation(
-                            baseTail, 
-                            adjustedMutableStart, 
-                            adjustedMutableEnd, 
-                            config.minChunkSize, 
-                            config.maxChunkSize
-                        );
+						mutatedTail = generateSegmentReversalMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
 						break;
 					case 'TG3':
 						mutatedTail = generatePartManipulationMutation(

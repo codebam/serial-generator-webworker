@@ -20,7 +20,7 @@ import {
  * @param {string} itemType - The type of item being generated (e.g., 'GUN').
  * @returns {string} A new, mutated tail.
  */
-export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType) {
+export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, charPool = null) {
     if (self.debugMode) console.log(`[DEBUG] > Knowledge-Based Mutation | finalLength: ${finalLength}`);
 
     const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
@@ -33,7 +33,7 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     }
 
     let mutatedTail = baseTail;
-    const charPool = ALPHABET.split('');
+    const finalCharPool = charPool || ALPHABET.split('');
 
     // Strategy 1: Inject a stable motif
     if (getNextRandom() < 0.4) { // 40% chance to inject a motif
@@ -51,7 +51,7 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     let mutationCount = 0;
     for (let i = safeStart; i < safeEnd; i++) {
         if (getNextRandom() < mutationRate) {
-            chars[i] = randomChoice(charPool);
+            chars[i] = randomChoice(finalCharPool);
             mutationCount++;
         }
     }
@@ -63,7 +63,7 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     if (finalMutatedTail.length < finalLength) {
         let padding = '';
         for (let i = 0; i < finalLength - finalMutatedTail.length; i++) {
-            padding += randomChoice(charPool);
+            padding += randomChoice(finalCharPool);
         }
         finalMutatedTail += padding;
     }
@@ -95,42 +95,19 @@ export function generateAppendMutation(baseTail, finalLength, protectedStartLeng
 }
 
 // TG1: Targeted Character Flip (Low Intensity)
-export function generateCharacterFlipMutation(baseTail, mutableStart, mutableEnd, itemType = 'GENERIC') {
-    if (self.debugMode) console.log(`[DEBUG] > TG1: Character Flip | range: ${mutableStart}-${mutableEnd}, itemType: ${itemType}`);
-    const chars = [...baseTail];
-    const flipRate = 0.05; // 5% chance per character
-    let flipCount = 0;
-    const charPool = getCharPoolForItemType(itemType);
-
-    for (let i = mutableStart; i < mutableEnd; i++) {
-        if (getNextRandom() < flipRate) {
-            chars[i] = randomChoice(charPool);
-            flipCount++;
-        }
-    }
-    if (self.debugMode) console.log(`[DEBUG]   > Flipped ${flipCount} characters using ${itemType} pool.`);
-    return chars.join('');
+export function generateCharacterFlipMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
+    if (self.debugMode) console.log(`[DEBUG] > TG1: Knowledge-Based Mutation (Mixed Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
+    const itemCharPool = getCharPoolForItemType(itemType);
+    const fullCharPool = ALPHABET.split('');
+    const mixedPool = [...new Set([...itemCharPool, ...fullCharPool])]; // Combine and remove duplicates
+    return generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, mixedPool);
 }
 
 // TG2: Segment Reversal (Medium Intensity)
-export function generateSegmentReversalMutation(baseTail, mutableStart, mutableEnd, minChunk, maxChunk) {
-    if (self.debugMode) console.log(`[DEBUG] > TG2: Segment Reversal | range: ${mutableStart}-${mutableEnd}`);
-    if (mutableEnd - mutableStart < minChunk) {
-        if (self.debugMode) console.log(`[DEBUG]   > Mutable range too small for reversal. Skipping.`);
-        return baseTail;
-    }
-    
-    const chunkSize = randomInt(minChunk, Math.min(maxChunk, mutableEnd - mutableStart));
-    const start = randomInt(mutableStart, mutableEnd - chunkSize);
-    
-    const prefix = baseTail.substring(0, start);
-    const segment = baseTail.substring(start, start + chunkSize);
-    const suffix = baseTail.substring(start + chunkSize);
-    
-    const reversedSegment = [...segment].reverse().join('');
-    if (self.debugMode) console.log(`[DEBUG]   > Reversed segment "${segment}" to "${reversedSegment}" at index ${start}.`);
-    
-    return prefix + reversedSegment + suffix;
+export function generateSegmentReversalMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
+    if (self.debugMode) console.log(`[DEBUG] > TG2: Knowledge-Based Mutation (Item Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
+    const itemCharPool = getCharPoolForItemType(itemType);
+    return generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, itemCharPool);
 }
 
 // TG3: High-Value Part Manipulation (High Intensity)
