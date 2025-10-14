@@ -695,19 +695,18 @@ const App = () => {
 																	className={inputClasses}
 																	disabled={isMerging}
 																/>
-																<p className="text-xs text-gray-400">Subtly mutates the serial by 'flipping' a few characters to adjacent ones (e.g., 'a' to 'b').</p>
-															</FormGroup>
-															<FormGroup label="TG2">
-																<input
-																	type="number"
-																	name="counts.tg2"
-																	value={state.counts.tg2}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>
-																<p className="text-xs text-gray-400">Reverses a random segment of characters within the mutable range.</p>
-															</FormGroup>
+																                                                                <p className="text-xs text-gray-400">Knowledge-based mutation using a mix of the item's character set and the full character set.</p>
+																															</FormGroup>
+																															<FormGroup label="TG2">
+																																<input
+																																	type="number"
+																																	name="counts.tg2"
+																																	value={state.counts.tg2}
+																																	onChange={handleInputChange}
+																																	className={inputClasses}
+																																	disabled={isMerging}
+																																/>
+																																<p className="text-xs text-gray-400">Knowledge-based mutation using only the item's character set.</p>															</FormGroup>
 															<FormGroup label="TG3">
 																<input
 																	type="number"
