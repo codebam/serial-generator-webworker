@@ -576,7 +576,7 @@
 												onChange={handleInputChange}
 												className={inputClasses}
 											/>
-											<p class="text-xs text-gray-400">Injects a random block of characters from a parent serial into the base seed.</p>
+											<p class="text-xs text-gray-400">Subtly mutates the serial by 'flipping' a few characters to adjacent ones (e.g., 'a' to 'b').</p>
 										</FormGroup>
 										<FormGroup label="TG2">
 											<input
@@ -586,7 +586,7 @@
 												onChange={handleInputChange}
 												className={inputClasses}
 											/>
-											<p class="text-xs text-gray-400">Identical to TG1; injects a random block of characters from a parent serial.</p>
+											<p class="text-xs text-gray-400">Reverses a random segment of characters within the mutable range.</p>
 										</FormGroup>
 										<FormGroup label="TG3">
 											<input
@@ -596,7 +596,7 @@
 												onChange={handleInputChange}
 												className={inputClasses}
 											/>
-											<p class="text-xs text-gray-400">Similar to TG1, but preserves the defined 'Mutable Character Range' prefix of the base seed.</p>
+											<p class="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
 										</FormGroup>
 										<FormGroup label="TG4">
 											<input
@@ -606,7 +606,7 @@
 												onChange={handleInputChange}
 												className={inputClasses}
 											/>
-											<p class="text-xs text-gray-400">Mutates characters within the 'Mutable Character Range' of the base seed using a character pool specific to the item type.</p>
+											<p class="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
 										</FormGroup>
 									</div>
 								</Accordion>
