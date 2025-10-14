@@ -4,6 +4,7 @@ import { randomChoice, ensureCharset, splitHeaderTail, extractHighValueParts } f
 import { calculateHighValuePartsStats } from './stats.js';
 import { filterSerials } from './yaml-filter.js';
 import {
+    generateKnowledgeBasedMutation, // The new primary mutation function
     generateAppendMutation,
     generateCharacterFlipMutation,
     generateSegmentReversalMutation,
@@ -120,7 +121,7 @@ uniqueCount: 0,
 
 				switch (item.tg) {
 					case 'NEW':
-						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+						mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, 'GUN'); // TODO: Make itemType dynamic
 						break;
 					case 'TG1':
 						mutatedTail = generateCharacterFlipMutation(baseTail, adjustedMutableStart, adjustedMutableEnd);

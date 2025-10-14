@@ -1,6 +1,79 @@
 import { ALPHABET } from './constants.js';
 import { getNextRandom } from './gpu.js';
 import { randomInt, randomChoice } from './utils.js';
+import { 
+    SAFE_EDIT_ZONES, 
+    STABLE_MOTIFS,
+    alignToBase85,
+    getCharPoolForItemType
+} from './knowledge.js';
+
+
+// --- KNOWLEDGE-BASED MUTATION ---
+
+/**
+ * NEW: A "smart" mutation that respects the validated safety rules from KNOWLEDGE.md.
+ * This should be the preferred mutation strategy.
+ * @param {string} baseTail - The initial tail of the serial.
+ * @param {string} originalSerial - The full original serial for alignment reference.
+ * @param {number} finalLength - The desired final length of the tail.
+ * @param {string} itemType - The type of item being generated (e.g., 'GUN').
+ * @returns {string} A new, mutated tail.
+ */
+export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType) {
+    if (self.debugMode) console.log(`[DEBUG] > Knowledge-Based Mutation | finalLength: ${finalLength}`);
+
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    const safeEnd = baseTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+
+    if (safeStart >= safeEnd) {
+        if (self.debugMode) console.warn(`[DEBUG]   > No safe edit zone found or zone is invalid. Falling back to append.`);
+        return generateAppendMutation(baseTail, finalLength, 0);
+    }
+
+    let mutatedTail = baseTail;
+    const charPool = getCharPoolForItemType(itemType);
+
+    // Strategy 1: Inject a stable motif
+    if (getNextRandom() < 0.4) { // 40% chance to inject a motif
+        const motif = randomChoice(STABLE_MOTIFS);
+        const injectPosition = randomInt(safeStart, safeEnd - motif.length);
+        if (injectPosition > safeStart && (injectPosition + motif.length) < safeEnd) {
+            mutatedTail = mutatedTail.substring(0, injectPosition) + motif + mutatedTail.substring(injectPosition + motif.length);
+            if (self.debugMode) console.log(`[DEBUG]   > Injected motif "${motif}" at index ${injectPosition}.`);
+        }
+    }
+
+    // Strategy 2: Perform controlled random mutations in the safe zone
+    const chars = [...mutatedTail];
+    const mutationRate = 0.15; // 15% chance per character in the safe zone
+    let mutationCount = 0;
+    for (let i = safeStart; i < safeEnd; i++) {
+        if (getNextRandom() < mutationRate) {
+            chars[i] = randomChoice(charPool);
+            mutationCount++;
+        }
+    }
+    mutatedTail = chars.join('');
+    if (self.debugMode) console.log(`[DEBUG]   > Performed ${mutationCount} character mutations in the safe zone.`);
+
+    // Final step: Adjust length and align to Base85 block boundary
+    let finalMutatedTail = mutatedTail.substring(0, finalLength);
+    if (finalMutatedTail.length < finalLength) {
+        let padding = '';
+        for (let i = 0; i < finalLength - finalMutatedTail.length; i++) {
+            padding += randomChoice(charPool);
+        }
+        finalMutatedTail += padding;
+    }
+    
+    finalMutatedTail = alignToBase85(finalMutatedTail, originalSerial);
+    if (self.debugMode) console.log(`[DEBUG]   > Final tail aligned and resized. Length: ${finalMutatedTail.length}`);
+
+    return finalMutatedTail;
+}
+
 
 // --- REFACTORED MUTATION ALGORITHMS (Intensity Ladder) ---
 
