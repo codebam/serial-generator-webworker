@@ -134,6 +134,7 @@ const App = () => {
     const defaultState = {
         repository: '',
         seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
+        itemType: 'GUN', // <-- NEW: Default item type
         counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
         rules: {
             targetOffset: 250,
@@ -364,6 +365,7 @@ const App = () => {
         setFilteredYaml('');
         const config = {
             seed: state.seed,
+            itemType: state.itemType, // <-- NEW: Pass item type to worker
             repository: state.repository,
             newCount: parseInt(state.counts.new || '0', 10),
             tg1Count: parseInt(state.counts.tg1 || '0', 10),
@@ -582,7 +584,17 @@ const App = () => {
                                 <input type="file" accept=".yaml,.yml" onChange={restoreState} className="hidden" disabled={isMerging} />
                             </label>
                         </div>
-                    </Accordion>					<Accordion title="🧬 Mutation Rules" open={true}>
+                    </Accordion>                    <Accordion title="🧬 Mutation Rules" open={true}>
+                        <FormGroup label="Item Type">
+                            <select name="itemType" value={state.itemType} onChange={handleInputChange} className={inputClasses} disabled={isMerging}>
+                                <option value="GUN">Gun</option>
+                                <option value="SHIELD">Shield</option>
+                                <option value="CLASS_MOD">Class Mod</option>
+                                <option value="ENHANCEMENT">Enhancement</option>
+                                <option value="REPKIT">Repair Kit</option>
+                                <option value="GENERIC">Generic</option>
+                            </select>
+                        </FormGroup>
 						                        <MutableRangeSelector
 													seed={state.seed}
 													start={state.rules.mutableStart}

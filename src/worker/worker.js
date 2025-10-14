@@ -120,10 +120,9 @@ uniqueCount: 0,
 				dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
 
 				switch (item.tg) {
-					case 'NEW':
-						mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, 'GUN'); // TODO: Make itemType dynamic
-						break;
-					case 'TG1':
+					                    case 'NEW':
+					                        mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
+					                        break;					case 'TG1':
 						mutatedTail = generateCharacterFlipMutation(baseTail, adjustedMutableStart, adjustedMutableEnd);
 						break;
 					case 'TG2':
