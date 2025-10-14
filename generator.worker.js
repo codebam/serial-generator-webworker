@@ -501,7 +501,7 @@ self.onmessage = async function (e) {
 	try {
 		if (!gpuDevice) await setupWebGPU();
 		const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
-        console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
+		console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
 		if (totalRequested === 0) {
 			self.postMessage({
 				type: 'complete',
@@ -515,289 +515,138 @@ self.onmessage = async function (e) {
 		}
 		await generateRandomNumbersOnGPU(config.gpuBatchSize);
 		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
-        let newBaseTail = baseTail;
-        console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
+		console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
 
 		const selectedRepoTails = (config.repositories[config.itemType] || '')
 			.split(/[\s\n]+/)
 			.filter((s) => s.startsWith('@U'))
 			.map((s) => splitHeaderTail(s)[1]);
 		if (selectedRepoTails.length === 0) {
-            console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
+			console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
 			selectedRepoTails.push(baseTail);
 		} else {
-            console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
-        }
+			console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
+		}
 
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
 		const legendaryStackingChance = config.legendaryChance / 100.0;
 
-				const shuffleArray = (array) => {
+		const shuffleArray = (array) => {
 			for (let i = array.length - 1; i > 0; i--) {
 				const j = Math.floor(getNextRandom() * (i + 1));
 				[array[i], array[j]] = [array[j], array[i]];
 			}
 		};
 
-								const seenSerials = new Set();
-
-								const generatedSerials = [];
-
-						
-
-								// Handle NEW serials first to create a clean chain
-
-								let newBaseTail = baseTail;
-
-								for (let i = 0; i < config.newCount; i++) {
-
-									const dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
-
-									const mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, newBaseTail.length);
-
-									const serial = ensureCharset(baseHeader + mutatedTail);
-
-									if (!seenSerials.has(serial)) {
-
-										seenSerials.add(serial);
-
-										generatedSerials.push({
-
-											serial: serial,
-
-											flag: 0,
-
-											state_flag: 0,
-
-											slot: generatedSerials.length,
-
-										});
-
-										newBaseTail = mutatedTail;
-
-									}
-
-								}
-
-						
-
-								const serialsToGenerate = [];		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
-
+		const serialsToGenerate = [];
+		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
+		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
 		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
-
 		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
-
 		for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
-
 		shuffleArray(serialsToGenerate); // Shuffle the generation order
 
-		
-
-				const seenSerials = new Set();
-
-				const generatedSerials = [];
-
-		        console.log('[DEBUG] Starting generation loop...');
-
-		
-
-		        const headerLength = baseHeader.length;
-
-		        const adjustedMutableStart = Math.max(0, config.mutableStart - headerLength);
-
-		        const adjustedMutableEnd = Math.max(0, config.mutableEnd - headerLength);
-
-		
-
-				for (let i = 0; i < totalRequested; i++) {
-
-					if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
-
-					const item = serialsToGenerate[i];
-
-					let serial = '';
-
-					let innerAttempts = 0;
-                    let mutatedTail;
-
-		
-
-		            if (debugMode && i < 10) console.log(`\n[DEBUG] --- Generating Serial #${i + 1} (Type: ${item.tg}) ---`);
-
-		
-
-					do {
-
-						const parentTail = randomChoice(selectedRepoTails);
-
-						const protectedStartLength = adjustedMutableStart;
-
-						let dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
-
-						dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
-
-		
-
-						
-
-		
-
-						switch (item.tg) {
-
-
-		                    case 'TG1':
-		                        mutatedTail = performWindowedCrossover(
-									baseTail,
-									parentTail,
-									dynamicTargetLength,
-									0, // Ignore mutable range
-									config.minChunkSize,
-									config.maxChunkSize,
-									config.targetChunkSize
-								);
-		                        break;
-
-		                    case 'TG2':
-
-		                        mutatedTail = performWindowedCrossover(
-
-									baseTail,
-
-									parentTail,
-
-									dynamicTargetLength,
-
-									0, // Ignore mutable range
-
-									config.minChunkSize,
-
-									config.maxChunkSize,
-
-									config.targetChunkSize
-
-								);
-
-		                        break;
-
-		                    case 'TG3': // Was TG4
-		                        mutatedTail = performWindowedCrossover(
-									baseTail,
-									parentTail,
-									dynamicTargetLength,
-									adjustedMutableStart,
-									config.minChunkSize,
-									config.maxChunkSize,
-									config.targetChunkSize
-								);
-		                        if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
-		                            if (debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
-		                            const part = randomChoice(highValueParts).slice();
-		                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
-		                            if (availableMutableSpace >= part.length) {
-		                                const numRepeats = Math.floor(availableMutableSpace / part.length);
-		                                if (numRepeats > 0) {
-		                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
-		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
-		                                    if (debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
-		                                }
-		                            }
-		                        }
-		                        break;
-
-		                    case 'TG4': // Was TG3
-
-		                        // Start with a crossover base
-
-		                        mutatedTail = performWindowedCrossover(
-
-									baseTail,
-
-									parentTail,
-
-									dynamicTargetLength,
-
-									0, // Ignore mutable range for crossover
-
-									config.minChunkSize,
-
-									config.maxChunkSize,
-
-									config.targetChunkSize
-
-								);
-
-		                        // Then attempt legendary stacking
-
-		                        if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
-
-		                            if (debugMode) console.log('[DEBUG] > TG4 Legendary Stacking Triggered!');
-
-		                            const part = randomChoice(highValueParts).slice();
-
-		                            // Use the final target length for calculation, not the base tail length
-		                            const availableMutableSpace = dynamicTargetLength - 0; // Crossover was on the whole tail
-
-		                            if (availableMutableSpace >= part.length) {
-
-		                                const numRepeats = Math.floor(availableMutableSpace / part.length);
-
-		                                if (numRepeats > 0) {
-
-		                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
-
-		                                    // Replace the end of the tail with the repeated block
-
-		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
-
-		                                    if (debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
-
-		                                }
-
-		                            }
-
-		                        }
-
-		                        mutatedTail = generateTargetedMutation(mutatedTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-		                        break;
-
-		                    case 'TG4':
-		                        mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-		                        if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
-		                            if(debugMode) console.log('[DEBUG] > TG4 Legendary Stacking Triggered!');
-		                            const part = randomChoice(highValueParts).slice();
-		                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
-		                            if (availableMutableSpace >= part.length) {
-		                                const numRepeats = Math.floor(availableMutableSpace / part.length);
-		                                if (numRepeats > 0) {
-		                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
-		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
-		                                    if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
-		                                }
-		                            }
-		                        }
-		                        break;
-
-		                    default:
-
-		                         mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
-
-		                }
-
-		
-
-						serial = ensureCharset(baseHeader + mutatedTail);
-
-						innerAttempts++;
-
-		                if (innerAttempts > 1 && debugMode) console.warn(`[DEBUG] Collision detected. Retrying... (Attempt ${innerAttempts})`);
-
-					} while (seenSerials.has(serial) && innerAttempts < 20);
-
-						if (!seenSerials.has(serial)) {
-
-			                
-
-							seenSerials.add(serial);
+		const seenSerials = new Set();
+		const generatedSerials = [];
+		console.log('[DEBUG] Starting generation loop...');
+
+		const headerLength = baseHeader.length;
+		const adjustedMutableStart = Math.max(0, config.mutableStart - headerLength);
+		const adjustedMutableEnd = Math.max(0, config.mutableEnd - headerLength);
+
+		for (let i = 0; i < totalRequested; i++) {
+			if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
+
+			const item = serialsToGenerate[i];
+			let serial = '';
+			let innerAttempts = 0;
+			let mutatedTail;
+
+			if (debugMode && i < 10) console.log(`\n[DEBUG] --- Generating Serial #${i + 1} (Type: ${item.tg}) ---`);
+
+			do {
+				const parentTail = randomChoice(selectedRepoTails);
+				const protectedStartLength = adjustedMutableStart;
+				let dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+				dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
+
+				switch (item.tg) {
+					case 'NEW':
+						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+						break;
+					case 'TG1':
+						mutatedTail = performWindowedCrossover(
+							baseTail,
+							parentTail,
+							dynamicTargetLength,
+							0, // Ignore mutable range
+							config.minChunkSize,
+							config.maxChunkSize,
+							config.targetChunkSize
+						);
+						break;
+					case 'TG2':
+						mutatedTail = performWindowedCrossover(
+							baseTail,
+							parentTail,
+							dynamicTargetLength,
+							0, // Ignore mutable range
+							config.minChunkSize,
+							config.maxChunkSize,
+							config.targetChunkSize
+						);
+						break;
+					case 'TG3': // Crossover with protection + legendary stacking
+						mutatedTail = performWindowedCrossover(
+							baseTail,
+							parentTail,
+							dynamicTargetLength,
+							adjustedMutableStart,
+							config.minChunkSize,
+							config.maxChunkSize,
+							config.targetChunkSize
+						);
+						if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+							if (debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
+							const part = randomChoice(highValueParts).slice();
+							const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+							if (availableMutableSpace >= part.length) {
+								const numRepeats = Math.floor(availableMutableSpace / part.length);
+								if (numRepeats > 0) {
+									const repeatedBlock = new Array(numRepeats).fill(part).join('');
+									mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+									if (debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+								}
+							}
+						}
+						break;
+					case 'TG4': // "Targeted Mutation"
+						mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+						if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+							if(debugMode) console.log('[DEBUG] > TG4 Legendary Stacking Triggered!');
+							const part = randomChoice(highValueParts).slice();
+							const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+							if (availableMutableSpace >= part.length) {
+								const numRepeats = Math.floor(availableMutableSpace / part.length);
+								if (numRepeats > 0) {
+									const repeatedBlock = new Array(numRepeats).fill(part).join('');
+									mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+									if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+								}
+							}
+						}
+						break;
+					default:
+						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+				}
+
+				serial = ensureCharset(baseHeader + mutatedTail);
+				innerAttempts++;
+				if (innerAttempts > 1 && debugMode) console.warn(`[DEBUG] Collision detected. Retrying... (Attempt ${innerAttempts})`);
+			} while (seenSerials.has(serial) && innerAttempts < 20);
+
+			if (!seenSerials.has(serial)) {
+				seenSerials.add(serial);
 				const flagValue = TG_FLAGS[item.tg] || 0;
 				generatedSerials.push({
 					serial: serial,
@@ -812,8 +661,7 @@ self.onmessage = async function (e) {
 					payload: { processed: i + 1, total: totalRequested },
 				});
 		}
-        console.log(`[DEBUG] Generation loop finished. Generated ${generatedSerials.length} unique serials.`);
-
+		console.log(`[DEBUG] Generation loop finished. Generated ${generatedSerials.length} unique serials.`);
 
 		const fullLines = ['state:', '  inventory:', '    items:', '      backpack:'];
 		generatedSerials.forEach((item) => {
@@ -836,7 +684,7 @@ self.onmessage = async function (e) {
 
 		// --- DECOUPLED MESSAGES ---
 		// 1. Send YAML data immediately for UI responsiveness
-        console.log('[DEBUG] Sending YAML output to main thread.');
+		console.log('[DEBUG] Sending YAML output to main thread.');
 		self.postMessage({
 			type: 'complete',
 			payload: {
@@ -850,7 +698,7 @@ self.onmessage = async function (e) {
 
 		// 2. If stats are enabled, calculate and send them in a separate message
 		if (config.generateStats && generatedSerials.length > 0) {
-            console.log('[DEBUG] Calculating and sending statistics.');
+			console.log('[DEBUG] Calculating and sending statistics.');
 			const serialStrings = generatedSerials.map((s) => s.serial);
 			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
 			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
