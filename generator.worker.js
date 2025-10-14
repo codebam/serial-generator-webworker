@@ -600,11 +600,7 @@ self.onmessage = async function (e) {
 						switch (item.tg) {
 
 		                                            		                    case 'NEW':
-		                                            		                        if (adjustedMutableStart === 0 && adjustedMutableEnd === 0) {
-		                                            		                            mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, protectedStartLength);
-		                                            		                        } else {
-		                                            		                            mutatedTail = generateTargetedMutation(newBaseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-		                                            		                        }
+		                                            		                        mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, newBaseTail.length);
 		                                            		                        break;
 		                    case 'TG1':
 
