@@ -271,55 +271,6 @@ function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) {
 }
 
 
-// --- INTELLIGENT MUTATION ALGORITHMS ---
-function generateAppendMutation(baseTail, finalLength, tailMutableStart, tailMutableEnd) {
-    if (debugMode) console.log(`[DEBUG] > Append Mutation | finalLength: ${finalLength}, mutable range: ${tailMutableStart}-${tailMutableEnd}`);
-    const prefix = baseTail.substring(0, tailMutableStart);
-    const suffix = baseTail.substring(tailMutableEnd);
-
-    let mutablePartLength = finalLength - prefix.length - suffix.length;
-    if (mutablePartLength < 0) {
-        return (prefix + suffix).substring(0, finalLength);
-    }
-
-    let randomizedPart = '';
-    for (let i = 0; i < mutablePartLength; i++) {
-        randomizedPart += randomChoice(ALPHABET);
-    }
-
-    const newTail = prefix + randomizedPart + suffix;
-    if (newTail.length > finalLength) return newTail.substring(0, finalLength);
-    return newTail;
-}
-
-function performWindowedCrossover(baseTail, parentTail, finalLength, tailMutableStart, tailMutableEnd, minChunk, maxChunk, targetChunk) {
-    if (debugMode) console.log(`[DEBUG] > Crossover Mutation | finalLength: ${finalLength}, mutable range: ${tailMutableStart}-${tailMutableEnd}`);
-    const prefix = baseTail.substring(0, tailMutableStart);
-    const suffix = baseTail.substring(tailMutableEnd);
-    const finalChunkSize = Math.max(minChunk, Math.min(maxChunk, targetChunk));
-
-    let middlePart = '';
-
-    if (parentTail.length >= finalChunkSize) {
-        const chunkStartInParent = randomInt(0, parentTail.length - finalChunkSize);
-        const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
-        if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" into mutable zone.`);
-        middlePart = chunk;
-    }
-
-    const middlePartTargetLength = Math.max(0, finalLength - prefix.length - suffix.length);
-
-    if (middlePart.length < middlePartTargetLength) {
-        let padding = '';
-        for (let i = 0; i < (middlePartTargetLength - middlePart.length); i++) padding += randomChoice(ALPHABET);
-        middlePart += padding;
-    } else if (middlePart.length > middlePartTargetLength) {
-        middlePart = middlePart.substring(0, middlePartTargetLength);
-    }
-
-    return prefix + middlePart + suffix;
-}
-
 // --- NEW FUNCTIONS FOR TG4 TARGETED MUTATION ---
 function getItemCharPool(item_type) {
 	switch (item_type) {
@@ -516,217 +467,117 @@ self.onmessage = async function (e) {
 		}
 		await generateRandomNumbersOnGPU(config.gpuBatchSize);
 		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
-        const headerLen = baseHeader.length;
+        console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
 
-        		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
+		const selectedRepoTails = (config.repositories[config.itemType] || '')
+			.split(/[\s\n]+/)
+			.filter((s) => s.startsWith('@U'))
+			.map((s) => splitHeaderTail(s)[1]);
+		if (selectedRepoTails.length === 0) {
+            console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
+			selectedRepoTails.push(baseTail);
+		} else {
+            console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
+        }
 
-                const headerLen = baseHeader.length;
+		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
+		const legendaryStackingChance = config.legendaryChance / 100.0;
 
-        
+		const serialsToGenerate = [];
+		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
+		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
+		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
+		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
+		for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
+		serialsToGenerate.sort(() => getNextRandom() - 0.5); // Shuffle the generation order
 
-                const tailMutableStart = Math.max(0, config.mutableStart - headerLen);
+		const seenSerials = new Set();
+		const generatedSerials = [];
+        console.log('[DEBUG] Starting generation loop...');
 
-                const tailMutableEnd = Math.max(0, config.mutableEnd - headerLen);
+		for (let i = 0; i < totalRequested; i++) {
+			if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
+			const item = serialsToGenerate[i];
+			let serial = '';
+			let innerAttempts = 0;
 
-        
+            if (debugMode && i < 10) console.log(`\n[DEBUG] --- Generating Serial #${i + 1} (Type: ${item.tg}) ---`);
 
-                console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
-
-        
-
-        		const selectedRepoTails = (config.repositories[config.itemType] || '')
-
-        			.split(/[\s\n]+/)
-
-        			.filter((s) => s.startsWith('@U'))
-
-        			.map((s) => splitHeaderTail(s)[1]);
-
-        		if (selectedRepoTails.length === 0) {
-
-                    console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
-
-        			selectedRepoTails.push(baseTail);
-
-        		} else {
-
-                    console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
-
+			do {
+				const parentTail = randomChoice(selectedRepoTails);
+				const protectedStartPercent = randomInt(config.minProtectedPercent, config.maxProtectedPercent);
+				const protectedStartLength = Math.floor(baseTail.length * (protectedStartPercent / 100));
+				                dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
+				
+								let mutatedTail;
+				
+								switch (item.tg) {
+				                    case 'NEW':
+				                        mutatedTail = '';
+				                        for (let i = 0; i < dynamicTargetLength; i++) {
+				                            mutatedTail += randomChoice(ALPHABET);
+				                        }
+				                        break;
+				                    case 'TG1':
+				                    case 'TG2':
+				                        if (config.mutableStart === config.mutableEnd) {
+				                            mutatedTail = baseTail;
+				                        } else {
+				                            mutatedTail = performWindowedCrossover(
+				                                baseTail,
+				                                parentTail,
+				                                baseTail.length, // Preserve length
+				                                tailMutableStart,
+				                                tailMutableEnd,
+				                                config.minChunkSize,
+				                                config.maxChunkSize,
+				                                config.targetChunkSize,
+				                            );
+				                        }
+				                        break;
+				                    case 'TG3':
+				                        if (config.mutableStart === config.mutableEnd) {
+				                            mutatedTail = baseTail;
+				                        }
+				                        else {
+				                            mutatedTail = performWindowedCrossover(
+				                                baseTail,
+				                                parentTail,
+				                                baseTail.length, // Preserve length
+				                                tailMutableStart,
+				                                tailMutableEnd,
+				                                config.minChunkSize,
+				                                config.maxChunkSize,
+				                                config.targetChunkSize,
+				                            );
+				                            // Then attempt legendary stacking
+				                            if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+				                                if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
+				                                const part = randomChoice(highValueParts).slice();
+				                                const prefix = baseTail.substring(0, tailMutableStart);
+				                                const suffix = baseTail.substring(tailMutableEnd);
+				                                const mutablePartTargetLength = tailMutableEnd - tailMutableStart;
+				
+				                                if (mutablePartTargetLength >= part.length) {
+				                                    const numRepeats = Math.floor(mutablePartTargetLength / part.length);
+				                                    if (numRepeats > 0) {
+				                                        const repeatedBlock = new Array(numRepeats).fill(part).join('');
+				                                        const remainingSpace = mutablePartTargetLength - repeatedBlock.length;
+				                                        const finalMutablePart = repeatedBlock + part.substring(0, remainingSpace);
+				                                        mutatedTail = prefix + finalMutablePart + suffix;
+				                                        if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times into mutable zone.`);
+				                                    }
+				                                }
+				                            }
+				                        }
+				                        break;                    case 'TG4':
+                        mutatedTail = generateTargetedMutation(baseTail, config.itemType);
+                        break;
+                    default:
+                         mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
                 }
 
-        
-
-        		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
-
-        		const legendaryStackingChance = config.legendaryChance / 100.0;
-
-        
-
-        		const serialsToGenerate = [];
-
-        		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
-
-        		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
-
-        		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
-
-        		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
-
-        		for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
-
-        		serialsToGenerate.sort(() => getNextRandom() - 0.5); // Shuffle the generation order
-
-        
-
-        		const seenSerials = new Set();
-
-        		const generatedSerials = [];
-
-                console.log('[DEBUG] Starting generation loop...');
-
-        
-
-        		for (let i = 0; i < totalRequested; i++) {
-
-        			if (randomIndex >= randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
-
-        			const item = serialsToGenerate[i];
-
-        			let serial = '';
-
-        			let innerAttempts = 0;
-
-        
-
-                    if (debugMode && i < 10) console.log(`\n[DEBUG] --- Generating Serial #${i + 1} (Type: ${item.tg}) ---`);
-
-        
-
-        			do {
-
-        				const parentTail = randomChoice(selectedRepoTails);
-
-        				let dynamicTargetLength = Math.floor(baseTail.length + config.targetOffset);
-
-        
-
-        				let mutatedTail;
-
-        
-
-        				switch (item.tg) {
-
-                            case 'NEW':
-
-                                mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, tailMutableStart, tailMutableEnd);
-
-                                break;
-
-                            case 'TG1':
-
-                            case 'TG2':
-
-                                mutatedTail = performWindowedCrossover(
-
-        							baseTail,
-
-        							parentTail,
-
-        							dynamicTargetLength,
-
-        							tailMutableStart,
-
-                                    tailMutableEnd,
-
-        							config.minChunkSize,
-
-        							config.maxChunkSize,
-
-        							config.targetChunkSize,
-
-        						);
-
-                                break;
-
-                            case 'TG3':
-
-                                // Start with a crossover base
-
-                                mutatedTail = performWindowedCrossover(
-
-        							baseTail,
-
-        							parentTail,
-
-        							dynamicTargetLength,
-
-        							tailMutableStart,
-
-                                    tailMutableEnd,
-
-        							config.minChunkSize,
-
-        							config.maxChunkSize,
-
-        							config.targetChunkSize,
-
-        						);
-
-                                // Then attempt legendary stacking
-
-                                if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
-
-                                    if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
-
-                                    const part = randomChoice(highValueParts).slice();
-
-                                    const prefix = baseTail.substring(0, tailMutableStart);
-
-                                    const suffix = baseTail.substring(tailMutableEnd);
-
-                                    const mutablePartTargetLength = Math.max(0, dynamicTargetLength - prefix.length - suffix.length);
-
-        
-
-                                    if (mutablePartTargetLength >= part.length) {
-
-                                        const numRepeats = Math.floor(mutablePartTargetLength / part.length);
-
-                                        if (numRepeats > 0) {
-
-                                            const repeatedBlock = new Array(numRepeats).fill(part).join('');
-
-                                            const remainingSpace = mutablePartTargetLength - repeatedBlock.length;
-
-                                            const finalMutablePart = repeatedBlock + part.substring(0, remainingSpace);
-
-                                            mutatedTail = prefix + finalMutablePart + suffix;
-
-                                            if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times into mutable zone.`);
-
-                                        }
-
-                                    }
-
-                                }
-
-                                break;
-
-                            case 'TG4':
-
-                                mutatedTail = generateTargetedMutation(baseTail, config.itemType);
-
-                                break;
-
-                            default:
-
-                                 mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, tailMutableStart, tailMutableEnd);
-
-                        }
-
-        
-
-        				serial = ensureCharset(baseHeader + mutatedTail);
+				serial = ensureCharset(baseHeader + mutatedTail);
 				innerAttempts++;
                 if (innerAttempts > 1 && debugMode) console.warn(`[DEBUG] Collision detected. Retrying... (Attempt ${innerAttempts})`);
 			} while (seenSerials.has(serial) && innerAttempts < 20);
