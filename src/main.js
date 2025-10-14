@@ -190,9 +190,25 @@ const App = () => {
     const [liveMerge, setLiveMerge] = useState(false);
     const [baseYaml, setBaseYaml] = useState('');
     const [isMerging, setIsMerging] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const workerRef = useRef(null);
     const chartRef = useRef(null);
+
+    const searchSerials = async () => {
+        if (!searchTerm) return;
+        setStatusMessage('Searching...');
+        try {
+            const response = await fetch(`https://kamer-tuintje.be/BL4/BSE/api.php?search=${encodeURIComponent(searchTerm)}&action=records&sort_by=id&sort_order=ASC`);
+            const data = await response.json();
+            const serials = data.map(item => item.serial).join('\n');
+            setState(prev => ({ ...prev, repository: prev.repository ? `${prev.repository}\n${serials}` : serials }));
+            setStatusMessage(`Found ${data.length} serials.`);
+        } catch (error) {
+            console.error('Failed to search serials:', error);
+            setStatusMessage('❌ ERROR: Failed to search serials.');
+        }
+    };
 
     const updateChart = (chartData) => {
         if (!state.generateStats || !chartData) return;
@@ -541,6 +557,20 @@ const App = () => {
                                 placeholder="Paste serials here..."
                                 disabled={isMerging}
                             ></textarea>
+                        </FormGroup>
+                        <FormGroup label="Search Serials">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    name="searchTerm"
+                                    className={inputClasses}
+                                    placeholder="Enter search term..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    disabled={isMerging}
+                                />
+                                <button onClick={searchSerials} className={btnClasses.secondary} disabled={isMerging}>Search</button>
+                            </div>
                         </FormGroup>
                         <FormGroup label="Base Serial Seed">
                             <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={isMerging}></textarea>
