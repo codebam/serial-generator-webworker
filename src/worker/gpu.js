@@ -1,7 +1,13 @@
 // --- GPU & RANDOMNESS STATE ---
 let gpuDevice = null;
-let randomBuffer;
+
+export const getGpuDevice = () => gpuDevice;
+let randomBuffer = new Float32Array(0);
 let randomIndex = 0;
+
+export function needsRandomNumberGeneration(margin) {
+    return randomIndex >= randomBuffer.length - margin;
+}
 
 export function getNextRandom() {
 	if (randomIndex >= randomBuffer.length) {

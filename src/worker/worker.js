@@ -1,5 +1,5 @@
 import { DEFAULT_SEED, TG_FLAGS, RANDOM_SAFETY_MARGIN } from './constants.js';
-import { setupWebGPU, generateRandomNumbersOnGPU } from './gpu.js';
+import { setupWebGPU, generateRandomNumbersOnGPU, needsRandomNumberGeneration, getGpuDevice } from './gpu.js';
 import { randomChoice, ensureCharset, splitHeaderTail, extractHighValueParts } from './utils.js';
 import { calculateHighValuePartsStats } from './stats.js';
 import { filterSerials } from './yaml-filter.js';
@@ -18,7 +18,6 @@ self.onmessage = async function (e) {
 	const { type, payload } = e.data;
     // This is the most reliable place to set the debug flag.
     debugMode = payload && payload.debugMode;
-    self.debugMode = debugMode;
 
 	console.log(`[DEBUG] Worker received message of type: ${type}. Debug mode is ${debugMode ? 'ENABLED' : 'DISABLED'}.`);
 
@@ -45,7 +44,7 @@ self.onmessage = async function (e) {
 	const config = e.data.payload;
     if (debugMode) console.log('[DEBUG] Received generation config:', config);
 	try {
-		if (!self.gpuDevice) await setupWebGPU();
+		if (!getGpuDevice()) await setupWebGPU();
 		const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
 		console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
 		if (totalRequested === 0) {
@@ -103,7 +102,7 @@ uniqueCount: 0,
 		const adjustedMutableEnd = Math.max(0, config.mutableEnd - headerLength);
 
 		for (let i = 0; i < totalRequested; i++) {
-			if (self.randomIndex >= self.randomBuffer.length - RANDOM_SAFETY_MARGIN) await generateRandomNumbersOnGPU(config.gpuBatchSize);
+			if (needsRandomNumberGeneration(RANDOM_SAFETY_MARGIN)) await generateRandomNumbersOnGPU(config.gpuBatchSize);
 
 			const item = serialsToGenerate[i];
 			let serial = '';
