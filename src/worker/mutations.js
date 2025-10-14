@@ -33,7 +33,7 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     }
 
     let mutatedTail = baseTail;
-    const charPool = getCharPoolForItemType(itemType);
+    const charPool = ALPHABET.split('');
 
     // Strategy 1: Inject a stable motif
     if (getNextRandom() < 0.4) { // 40% chance to inject a motif
