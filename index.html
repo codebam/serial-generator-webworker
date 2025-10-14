@@ -97,9 +97,9 @@
 					seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
 					counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
 					rules: {
-						targetOffset: 250, // Corrected to emulate original behavior
-						minProtected: 100,
-						maxProtected: 100,
+						targetOffset: 250,
+						mutableStart: 13,
+						mutableEnd: 30,
 						minChunk: 3,
 						maxChunk: 7,
 						targetChunk: 5,
@@ -291,15 +291,14 @@
 						tg2Count: parseInt(state.counts.tg2 || '0', 10),
 						tg3Count: parseInt(state.counts.tg3 || '0', 10),
 						tg4Count: parseInt(state.counts.tg4 || '0', 10),
-						targetOffset: parseInt(state.rules.targetOffset || '0', 10),
-						minProtectedPercent: parseInt(state.rules.minProtected || '0', 10),
-						maxProtectedPercent: parseInt(state.rules.maxProtected || '0', 10),
 						minChunkSize: parseInt(state.rules.minChunk || '0', 10),
 						maxChunkSize: parseInt(state.rules.maxChunk || '0', 10),
 						targetChunkSize: parseInt(state.rules.targetChunk || '0', 10),
 						minPartSize: parseInt(state.rules.minPart || '0', 10),
 						maxPartSize: parseInt(state.rules.maxPart || '0', 10),
 						legendaryChance: parseInt(state.rules.legendaryChance || '0', 10),
+						mutableStart: parseInt(state.rules.mutableStart || '0', 10),
+						mutableEnd: parseInt(state.rules.mutableEnd || '0', 10),
 						gpuBatchSize: 250000,
 						generateStats: state.generateStats,
 						debugMode: state.debugMode,
@@ -352,6 +351,70 @@
 					tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
 				};
 
+				const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
+					const handleRangeChange = (e) => {
+						const { name, value } = e.target;
+						let intValue = parseInt(value, 10);
+						if (isNaN(intValue)) intValue = name === 'start' ? start : end;
+
+						let newStart = name === 'start' ? intValue : start;
+						let newEnd = name === 'end' ? intValue : end;
+
+						if (newStart < 0) newStart = 0;
+						if (newEnd > seed.length) newEnd = seed.length;
+						if (newStart > newEnd) {
+							if (name === 'start') newStart = newEnd;
+							else newEnd = newStart;
+						}
+
+						setRange({ start: newStart, end: newEnd });
+					};
+
+					const protectedPrefix = seed.substring(0, start);
+					const mutablePart = seed.substring(start, end);
+					const protectedSuffix = seed.substring(end);
+
+					return (
+						<FormGroup label="Mutable Character Range">
+							<div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
+								<span className="text-gray-500" title="Protected Prefix">
+									{protectedPrefix}
+								</span>
+								<span className="bg-blue-900 text-blue-300 rounded-sm" title="Mutable Part">
+									{mutablePart}
+								</span>
+								<span className="text-gray-500" title="Protected Suffix">
+									{protectedSuffix}
+								</span>
+							</div>
+							<div className="grid grid-cols-2 gap-4">
+								<FormGroup label="Start Index">
+									<input
+										type="number"
+										name="start"
+										value={start}
+										onChange={handleRangeChange}
+										className={inputClasses}
+										min="0"
+										max={seed.length}
+									/>
+								</FormGroup>
+								<FormGroup label="End Index">
+									<input
+										type="number"
+										name="end"
+										value={end}
+										onChange={handleRangeChange}
+										className={inputClasses}
+										min="0"
+										max={seed.length}
+									/>
+								</FormGroup>
+							</div>
+						</FormGroup>
+					);
+				};
+
 				return (
 					<div className="p-4 md:p-8">
 						<header className="text-center mb-12">
@@ -395,24 +458,15 @@
 									</FormGroup>
 								</Accordion>
 								<Accordion title="🧬 Mutation Rules" open={true}>
-									<FormGroup label="Protected Start (%)">
-										<div className="grid grid-cols-2 gap-4">
-											<input
-												type="number"
-												name="rules.minProtected"
-												value={state.rules.minProtected}
-												onChange={handleInputChange}
-												className={inputClasses}
-											/>
-											<input
-												type="number"
-												name="rules.maxProtected"
-												value={state.rules.maxProtected}
-												onChange={handleInputChange}
-												className={inputClasses}
-											/>
-										</div>
-									</FormGroup>
+									<MutableRangeSelector
+										seed={state.seed}
+										start={state.rules.mutableStart}
+										end={state.rules.mutableEnd}
+										setRange={({ start, end }) =>
+											setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
+										}
+										inputClasses={inputClasses}
+									/>
 									<FormGroup label="Crossover Chunk Size">
 										<div className="grid grid-cols-3 gap-4">
 											<input
