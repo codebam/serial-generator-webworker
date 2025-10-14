@@ -367,15 +367,39 @@ const App = () => {
                 const importedYamlString = e.target.result;
                 const importedYaml = jsyaml.load(importedYamlString);
 
-                const generatedSerialsYaml = jsyaml.load(fullYaml);
-
-                if (generatedSerialsYaml && generatedSerialsYaml.backpack) {
-                    importedYaml.backpack = generatedSerialsYaml.backpack;
+                let generatedSerialsYaml;
+                try {
+                    generatedSerialsYaml = jsyaml.load(fullYaml);
+                } catch (e) {
+                    generatedSerialsYaml = jsyaml.load('---' + fullYaml);
                 }
 
-                const mergedYamlString = jsyaml.dump(importedYaml);
-                setOutputYaml(mergedYamlString);
-                setStatusMessage('YAML merged successfully. Ready to download.');
+                const findAndReplaceBackpack = (targetObject, backpackData) => {
+                    for (const key in targetObject) {
+                        if (key === 'backpack') {
+                            targetObject[key] = backpackData;
+                            return true;
+                        }
+                        if (typeof targetObject[key] === 'object' && targetObject[key] !== null) {
+                            if (findAndReplaceBackpack(targetObject[key], backpackData)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+
+                if (generatedSerialsYaml && generatedSerialsYaml.state && generatedSerialsYaml.state.inventory && generatedSerialsYaml.state.inventory.items && generatedSerialsYaml.state.inventory.items.backpack) {
+                    if (findAndReplaceBackpack(importedYaml, generatedSerialsYaml.state.inventory.items.backpack)) {
+                        const mergedYamlString = jsyaml.dump(importedYaml, { lineWidth: -1, quotingType: "'" });
+                        setOutputYaml(mergedYamlString);
+                        setStatusMessage('YAML merged successfully. Ready to download.');
+                    } else {
+                        setStatusMessage('❌ ERROR: Could not find a suitable location to merge the serials.');
+                    }
+                } else {
+                    setStatusMessage('❌ ERROR: No generated serials to merge.');
+                }
             } catch (error) {
                 console.error('Failed to merge YAML:', error);
                 setStatusMessage('❌ ERROR: Failed to merge YAML.');
