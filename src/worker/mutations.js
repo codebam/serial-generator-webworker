@@ -78,37 +78,37 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
 // --- REFACTORED MUTATION ALGORITHMS (Intensity Ladder) ---
 
 // NEW: Append-Only
-export function generateAppendMutation(baseTail, finalLength, protectedStartLength) {
-    if (self.debugMode) console.log(`[DEBUG] > Append Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}`);
+export function generateAppendMutation(baseTail, finalLength, protectedStartLength, itemType = 'GENERIC') {
+    if (self.debugMode) console.log(`[DEBUG] > Append Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}, itemType: ${itemType}`);
     const startPart = baseTail.substring(0, protectedStartLength);
     const paddingLength = finalLength - startPart.length;
     if (paddingLength <= 0) return startPart.substring(0, finalLength);
+    
+    const charPool = getCharPoolForItemType(itemType);
     let padding = '';
-    for (let i = 0; i < paddingLength; i++) padding += randomChoice(ALPHABET);
-    if (self.debugMode) console.log(`[DEBUG]   > Appending ${paddingLength} random characters.`);
+    for (let i = 0; i < paddingLength; i++) {
+        padding += randomChoice(charPool);
+    }
+    
+    if (self.debugMode) console.log(`[DEBUG]   > Appending ${paddingLength} random characters using ${itemType} pool.`);
     return startPart + padding;
 }
 
 // TG1: Targeted Character Flip (Low Intensity)
-export function generateCharacterFlipMutation(baseTail, mutableStart, mutableEnd) {
-    if (self.debugMode) console.log(`[DEBUG] > TG1: Character Flip | range: ${mutableStart}-${mutableEnd}`);
+export function generateCharacterFlipMutation(baseTail, mutableStart, mutableEnd, itemType = 'GENERIC') {
+    if (self.debugMode) console.log(`[DEBUG] > TG1: Character Flip | range: ${mutableStart}-${mutableEnd}, itemType: ${itemType}`);
     const chars = [...baseTail];
     const flipRate = 0.05; // 5% chance per character
     let flipCount = 0;
+    const charPool = getCharPoolForItemType(itemType);
 
     for (let i = mutableStart; i < mutableEnd; i++) {
         if (getNextRandom() < flipRate) {
-            const originalChar = chars[i];
-            const charIndex = ALPHABET.indexOf(originalChar);
-            if (charIndex !== -1) {
-                const direction = getNextRandom() < 0.5 ? -1 : 1;
-                let newIndex = (charIndex + direction + ALPHABET.length) % ALPHABET.length;
-                chars[i] = ALPHABET[newIndex];
-                flipCount++;
-            }
+            chars[i] = randomChoice(charPool);
+            flipCount++;
         }
     }
-    if (self.debugMode) console.log(`[DEBUG]   > Flipped ${flipCount} characters.`);
+    if (self.debugMode) console.log(`[DEBUG]   > Flipped ${flipCount} characters using ${itemType} pool.`);
     return chars.join('');
 }
 

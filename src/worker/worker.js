@@ -123,7 +123,7 @@ uniqueCount: 0,
 					                    case 'NEW':
 					                        mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
 					                        break;					case 'TG1':
-						mutatedTail = generateCharacterFlipMutation(baseTail, adjustedMutableStart, adjustedMutableEnd);
+						mutatedTail = generateCharacterFlipMutation(baseTail, adjustedMutableStart, adjustedMutableEnd, config.itemType);
 						break;
 					case 'TG2':
 						mutatedTail = generateSegmentReversalMutation(
@@ -154,7 +154,7 @@ uniqueCount: 0,
                         );
 						break;
 					default:
-						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength);
+						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength, config.itemType);
 				}
 
 				serial = ensureCharset(baseHeader + mutatedTail);
