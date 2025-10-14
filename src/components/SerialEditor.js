@@ -2,7 +2,7 @@
 
 
 
-const { useState, useEffect } = React;
+
 
 const SerialEditor = () => {
     const [serial, setSerial] = useState('');
