@@ -1,7 +1,18 @@
 
 
-const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, isMerging }) => {
-    const handleRangeChange = (e) => {
+declare const React: any;
+
+interface MutableRangeSelectorProps {
+    seed: string;
+    start: number;
+    end: number;
+    setRange: (range: { start: number; end: number }) => void;
+    inputClasses?: string;
+    isMerging?: boolean;
+}
+
+const MutableRangeSelector: React.FC<MutableRangeSelectorProps> = ({ seed, start, end, setRange, inputClasses, isMerging }) => {
+    const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         let intValue = parseInt(value, 10);
         if (isNaN(intValue)) intValue = name === 'start' ? start : end;

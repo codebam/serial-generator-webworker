@@ -4,14 +4,25 @@
 
 
 
+declare const React: any;
+
+const { useState, useEffect } = React;
+
 const SerialEditor = () => {
-    const [serial, setSerial] = useState('');
-    const [analysis, setAnalysis] = useState(null);
-    const [binary, setBinary] = useState('');
-    const [modifiedBinary, setModifiedBinary] = useState('');
-    const [selection, setSelection] = useState({ start: 0, end: 0 });
-    const [level, setLevel] = useState(null);
-    const [levelFoundAt, setLevelFoundAt] = useState(null);
+    const [serial, setSerial] = useState<string>('');
+    const [analysis, setAnalysis] = useState<{
+        type: string;
+        manufacturer: string;
+        hex: string;
+        safeEditStart: number | string;
+        safeEditEnd: number | string;
+        level: number | string;
+    } | null>(null);
+    const [binary, setBinary] = useState<string>('');
+    const [modifiedBinary, setModifiedBinary] = useState<string>('');
+    const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+    const [level, setLevel] = useState<number | null>(null);
+    const [levelFoundAt, setLevelFoundAt] = useState<number | null>(null);
 
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
@@ -97,7 +108,7 @@ const SerialEditor = () => {
         ]
     };
 
-    const standardLevelDetection = (binary) => {
+    const standardLevelDetection = (binary: string): [number | string, number] => {
         const LEVEL_MARKER = '000000';
         const valid_markers = [];
         for (let i = 0; i < binary.length - 13; i++) {
@@ -135,7 +146,7 @@ const SerialEditor = () => {
         return ['Unknown', -1];
     };
 
-    const enhancedLevelDetection = (binary) => {
+    const enhancedLevelDetection = (binary: string): [number | string, number] => {
         const all_candidates = [];
 
         for (let level = 0; level <= 50; level++) {
@@ -178,7 +189,7 @@ const SerialEditor = () => {
         return ['Unknown', -1];
     };
 
-    const detectItemLevel = (binary) => {
+    const detectItemLevel = (binary: string): [number | string, number] => {
         const [standard_result, standard_pos] = standardLevelDetection(binary);
 
         if (standard_result === 50) return [50, standard_pos];
@@ -290,7 +301,7 @@ const SerialEditor = () => {
         });
     };
 
-    const handleLevelChange = (e) => {
+    const handleLevelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newLevel = parseInt(e.target.value, 10);
         if (isNaN(newLevel) || newLevel < 0 || newLevel > 50) {
             return;
@@ -335,12 +346,12 @@ const SerialEditor = () => {
         }
     };
 
-    const handleSelectionChange = (e) => {
+    const handleSelectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setSelection(prev => ({ ...prev, [name]: parseInt(value, 10) }));
     };
 
-    const modifyBits = (modification) => {
+    const modifyBits = (modification: string) => {
         const { start, end } = selection;
         if (start > end) {
             alert('Start index cannot be greater than end index.');
@@ -372,7 +383,7 @@ const SerialEditor = () => {
     const [newSerial, setNewSerial] = useState('');
     const [modifiedBase85, setModifiedBase85] = useState('');
 
-    const encodeSerial = (binaryData) => {
+    const encodeSerial = (binaryData: string): string => {
         const bytes = [];
         for (let i = 0; i < binaryData.length; i += 8) {
             const byteString = binaryData.substring(i, i + 8);

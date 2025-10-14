@@ -1,7 +1,7 @@
 import { HEADER_RE } from './constants.js';
 
 // --- STATS FUNCTIONS (MOVED FROM UI) ---
-export function getSerialTail(serial) {
+export function getSerialTail(serial: string): string {
 	const match = serial.match(HEADER_RE);
 	if (match && match[0]) {
 		return serial.substring(match[0].length);
@@ -9,7 +9,7 @@ export function getSerialTail(serial) {
 	return serial.substring(10);
 }
 
-export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) {
+export function calculateHighValuePartsStats(serials: string[], minPartSize: number, maxPartSize: number): [string, number][] {
 	const frequencyMap = new Map();
 	const tails = serials.map(getSerialTail).filter((t) => t);
 

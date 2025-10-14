@@ -1,17 +1,35 @@
-
-
-
-
-
-
-
-
-
-
-const { useState, useEffect, useRef } = React;
-
-
-
+/// <reference types="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js" />
+declare const React: any;
+declare const ReactDOM: any;
+const useState = React.useState;
+const useEffect = React.useEffect;
+const useRef = React.useRef;
+interface AppState {
+    repository: string;
+    seed: string;
+    itemType: string;
+    counts: {
+        new: number;
+        tg1: number;
+        tg2: number;
+        tg3: number;
+        tg4: number;
+    };
+    rules: {
+        targetOffset: number;
+        mutableStart: number;
+        mutableEnd: number;
+        minChunk: number;
+        maxChunk: number;
+        targetChunk: number;
+        minPart: number;
+        maxPart: number;
+        legendaryChance: number;
+    };
+    validationChars: number;
+    generateStats: boolean;
+    debugMode: boolean;
+}
 const App = () => {
     const defaultState = {
         repository: '',
@@ -33,8 +51,7 @@ const App = () => {
         generateStats: true,
         debugMode: false,
     };
-
-    const [state, setState] = useState(() => {
+    const [state, setState] = useState<AppState>(() => {
         // --- MODIFIED STATE INITIALIZATION ---
         // This robustly merges saved state with defaults to prevent uncontrolled component warnings.
         const savedStateJSON = localStorage.getItem('serialGenState');
@@ -62,22 +79,17 @@ const App = () => {
         return defaultState;
         // --- END MODIFIED STATE INITIALIZATION ---
     });
-
-    const [statusMessage, setStatusMessage] = useState('Ready to generate.');
-    const [validationResult, setValidationResult] = useState('');
-    const [progress, setProgress] = useState(0);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [outputYaml, setOutputYaml] = useState('');
-    const [fullYaml, setFullYaml] = useState('');
-    const [filteredYaml, setFilteredYaml] = useState('');
-    const [liveMerge, setLiveMerge] = useState(false);
-    const [baseYaml, setBaseYaml] = useState('');
-    const [isMerging, setIsMerging] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const workerRef = useRef(null);
-    const chartRef = useRef(null);
-
+    const [statusMessage, setStatusMessage] = useState<string>('Ready to generate.');
+    const [validationResult, setValidationResult] = useState<string>('');
+    const [progress, setProgress] = useState<number>(0);
+    const [isGenerating, setIsGenerating] = useState<boolean>(false);
+    const [outputYaml, setOutputYaml] = useState<string>('');
+    const [fullYaml, setFullYaml] = useState<string>('');
+    const [filteredYaml, setFilteredYaml] = useState<string>('');
+    const [liveMerge, setLiveMerge] = useState<boolean>(false);
+    const [baseYaml, setBaseYaml] = useState<string>('');
+    const [isMerging, setIsMerging] = useState<boolean>(false);
+    const [searchTerm, setSearchTerm] = useState<string>('');
     const searchSerials = async () => {
         if (!searchTerm) return;
         setStatusMessage('Searching...');
@@ -92,12 +104,9 @@ const App = () => {
             setStatusMessage('❌ ERROR: Failed to search serials.');
         }
     };
-
-    const updateChart = (chartData) => {
+    const updateChart = (chartData: { labels: string[]; data: number[] }) => {
         if (!state.generateStats || !chartData) return;
-
         const { labels, data } = chartData;
-
         const container = document.getElementById('chartContainer');
         if (container) {
             const numBars = labels.length;
@@ -109,7 +118,6 @@ const App = () => {
                 container.style.width = '100%';
             }
         }
-
         const ctx = document.getElementById('statsChart').getContext('2d');
         if (chartRef.current) {
             chartRef.current.destroy();
@@ -138,14 +146,12 @@ const App = () => {
             },
         });
     };
-
     useEffect(() => {
         localStorage.setItem('serialGenState', JSON.stringify(state));
         if (!workerRef.current) {
             workerRef.current = new Worker('./src/worker/worker.js', { type: 'module' });
         }
-
-        const handleMessage = (e) => {
+        const handleMessage = (e: MessageEvent) => {
             const { type, payload } = e.data;
             switch (type) {
                 case 'progress':
@@ -182,9 +188,7 @@ const App = () => {
                     break;
             }
         };
-
         workerRef.current.onmessage = handleMessage;
-
         return () => {
             if (workerRef.current) {
                 workerRef.current.terminate();
@@ -192,14 +196,12 @@ const App = () => {
             }
         };
     }, [state]);
-
     useEffect(() => {
         if (liveMerge && baseYaml && fullYaml && !isMerging) {
             mergeYAML(baseYaml);
         }
     }, [fullYaml, liveMerge, baseYaml, isMerging]);
-
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type, checked } = e.target;
         // Handle checkboxes
         if (type === 'checkbox') {
@@ -211,7 +213,6 @@ const App = () => {
             }
             return;
         }
-
         // Handle number and text inputs
         if (type === 'number' && value !== '' && isNaN(parseInt(value, 10))) {
             return; // Don't update state for invalid number input
@@ -224,9 +225,9 @@ const App = () => {
             setState((prev) => ({ ...prev, [name]: val }));
         }
     };
-    const handleRepoEdit = (e) =>
+    const handleRepoEdit = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
         setState((prev) => ({ ...prev, repository: e.target.value }));
-    const handleSeedEdit = (e) => {
+    const handleSeedEdit = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newSeed = e.target.value;
         setState((prev) => ({
             ...prev, 
@@ -238,7 +239,6 @@ const App = () => {
             }
         }));
     };
-
     const startGeneration = () => {
         setIsGenerating(true);
         setStatusMessage('Sending job...');
@@ -269,7 +269,6 @@ const App = () => {
         };
         workerRef.current.postMessage({ type: 'generate', payload: config });
     };
-
     const resetForm = () => {
         if (confirm('Are you sure you want to reset all settings to their original defaults?')) {
             setState(defaultState);
@@ -281,9 +280,7 @@ const App = () => {
             localStorage.removeItem('serialGenState'); // Clear storage on reset
         }
     };
-
     const [copyText, setCopyText] = useState('Copy');
-
     const copyToClipboard = async () => {
         const contentToCopy = filteredYaml || fullYaml;
         if (contentToCopy) {
@@ -292,7 +289,6 @@ const App = () => {
             setTimeout(() => setCopyText('Copy'), 2000);
         }
     };
-
     const downloadYAML = () => {
         const contentToDownload = outputYaml;
         if (!contentToDownload) return;
@@ -303,7 +299,6 @@ const App = () => {
         link.click();
         URL.revokeObjectURL(link.href);
     };
-
     const mergeYAML = (baseYamlString) => {
         if (!baseYamlString) {
             setStatusMessage('❌ ERROR: No base YAML selected.');
@@ -313,14 +308,12 @@ const App = () => {
         setStatusMessage('Merging YAML...');
         try {
             const importedYaml = jsyaml.load(baseYamlString);
-
             let generatedSerialsYaml;
             try {
                 generatedSerialsYaml = jsyaml.load(fullYaml);
             } catch (e) {
                 generatedSerialsYaml = jsyaml.load('---' + fullYaml);
             }
-
             const findAndReplaceBackpack = (targetObject, backpackData) => {
                 for (const key in targetObject) {
                     if (key === 'backpack') {
@@ -335,7 +328,6 @@ const App = () => {
                 }
                 return false;
             };
-
             if (generatedSerialsYaml && generatedSerialsYaml.state && generatedSerialsYaml.state.inventory && generatedSerialsYaml.state.inventory.items && generatedSerialsYaml.state.inventory.items.backpack) {
                 if (findAndReplaceBackpack(importedYaml, generatedSerialsYaml.state.inventory.items.backpack)) {
                     const mergedYamlString = jsyaml.dump(importedYaml, { lineWidth: -1, quotingType: "'" });
@@ -353,9 +345,6 @@ const App = () => {
         }
         setIsMerging(false);
     };
-
-
-
     const saveState = () => {
         try {
             const stateToSave = {
@@ -375,8 +364,7 @@ const App = () => {
             setStatusMessage('❌ ERROR: Failed to save state.');
         }
     };
-
-    const restoreState = (event) => {
+    const restoreState = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files[0];
         if (!file) {
             return;
@@ -399,8 +387,7 @@ const App = () => {
         };
         reader.readAsText(file);
     };
-
-    const handleBaseYamlChange = (event) => {
+    const handleBaseYamlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files[0];
         if (!file) {
             return;
@@ -421,7 +408,6 @@ const App = () => {
             'py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50',
         tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
     };
-
     return (
         <div className="p-4 md:p-8">
             <header className="text-center mb-12">
@@ -612,7 +598,6 @@ const App = () => {
 							</FormGroup>
 						</div>
 					</Accordion>
-
                     <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
                             <button onClick={startGeneration} disabled={isGenerating || isMerging} className={btnClasses.primary}>
@@ -664,7 +649,6 @@ const App = () => {
                             </div>
                         )}
                     </div>
-
                     <Accordion title="✔️ Filtering">
                         <FormGroup label="Characters to Filter">
                             <input
@@ -704,7 +688,6 @@ const App = () => {
                     </Accordion>
                     <SerialEditor />
                 </div>
-
                 <div className="flex flex-col gap-4 h-full">
                     <Accordion title="📊 Statistics" open={false}>
                         <div className="overflow-x-auto">
@@ -761,14 +744,6 @@ const App = () => {
         </div>
     );
 };
-
-
-
-
-
-
 const container = document.getElementById('root');
-
 const root = ReactDOM.createRoot(container);
-
 root.render(<App />);

@@ -1,26 +1,26 @@
 import { ALPHABET, HEADER_RE } from './constants.js';
 import { getNextRandom } from './gpu.js';
 
-export function randomInt(min, max) {
+export function randomInt(min: number, max: number): number {
 	if (min > max) [min, max] = [max, min];
 	return Math.floor(getNextRandom() * (max - min + 1)) + min;
 }
 
-export function randomChoice(arr) {
+export function randomChoice<T>(arr: T[]): T {
 	return arr[Math.floor(getNextRandom() * arr.length)];
 }
 
-export function ensureCharset(s) {
+export function ensureCharset(s: string): string {
 	return [...s].filter((c) => ALPHABET.includes(c)).join('');
 }
 
-export function splitHeaderTail(serial) {
+export function splitHeaderTail(serial: string): [string, string] {
 	const match = serial.match(HEADER_RE);
 	if (match) return [match[1], serial.substring(match[0].length)];
 	return [serial.substring(0, 10), serial.substring(10)];
 }
 
-export function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
+export function extractHighValueParts(repoTails: string[], minPartSize: number, maxPartSize: number): string[] {
     console.log('[DEBUG] Starting high-value part extraction...');
 	const frequencyMap = new Map();
 	// 1. Find all repeating substrings within the size range

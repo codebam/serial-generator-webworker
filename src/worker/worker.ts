@@ -12,10 +12,39 @@ import {
     generateRepositoryCrossoverMutation
 } from './mutations.js';
 
+interface GeneratePayload {
+    debugMode: boolean;
+    yaml: string;
+    seed: string;
+    validationChars: number;
+    generateStats: boolean;
+    minPart: number;
+    maxPart: number;
+    gpuBatchSize: number;
+    newCount: number;
+    tg1Count: number;
+    tg2Count: number;
+    tg3Count: number;
+    tg4Count: number;
+    repository: string;
+    minPartSize: number;
+    maxPartSize: number;
+    legendaryChance: number;
+    mutableStart: number;
+    mutableEnd: number;
+    targetOffset: number;
+    itemType: string;
+}
+
+interface WorkerMessage {
+    type: 'generate' | 'validate';
+    payload: GeneratePayload;
+}
+
 let debugMode = false; // Global debug flag
 
 // --- ASYNC WORKER MESSAGE HANDLER ---
-self.onmessage = async function (e) {
+self.onmessage = async function (e: MessageEvent<WorkerMessage>) {
 	const { type, payload } = e.data;
     // This is the most reliable place to set the debug flag.
     debugMode = payload && payload.debugMode;
@@ -79,7 +108,7 @@ uniqueCount: 0,
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
 		const legendaryStackingChance = config.legendaryChance / 100.0;
 
-		const shuffleArray = (array) => {
+		const shuffleArray = (array: any[]) => {
 			for (let i = array.length - 1; i > 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
 				[array[i], array[j]] = [array[j], array[i]];

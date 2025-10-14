@@ -1,4 +1,14 @@
-const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
+declare const React: any;
+
+interface AccordionProps {
+    title: string;
+    children: React.ReactNode;
+    open?: boolean;
+    className?: string;
+    noPadding?: boolean;
+}
+
+const Accordion: React.FC<AccordionProps> = ({ title, children, open = false, className = '', noPadding = false }) => (
     <details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
         <summary className="accordion-summary flex items-center justify-between p-4 text-lg font-semibold cursor-pointer list-none hover:bg-gray-700/50">
             {title}

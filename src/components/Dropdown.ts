@@ -2,7 +2,17 @@
 
 
 
-const Dropdown = ({ title, children, btnClasses }) => {
+declare const React: any;
+
+const { useState, useRef, useEffect } = React;
+
+interface DropdownProps {
+    title: string;
+    children: React.ReactNode;
+    btnClasses?: string;
+}
+
+const Dropdown: React.FC<DropdownProps> = ({ title, children, btnClasses }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 

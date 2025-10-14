@@ -60,7 +60,7 @@ export const ITEM_TYPE_CHAR_POOLS = {
  * @param {string} itemType - The type of the item (e.g., 'GUN', 'SHIELD').
  * @returns {string[]} An array of characters for mutation.
  */
-export function getCharPoolForItemType(itemType) {
+export function getCharPoolForItemType(itemType: string): string[] {
     const upperType = itemType.toUpperCase();
     return ITEM_TYPE_CHAR_POOLS[upperType] || ITEM_TYPE_CHAR_POOLS.GENERIC;
 }
@@ -72,7 +72,7 @@ export function getCharPoolForItemType(itemType) {
  * @param {string} originalSerial - The original seed serial.
  * @returns {string} The adjusted serial with padding if necessary.
  */
-export function alignToBase85(currentSerial, originalSerial) {
+export function alignToBase85(currentSerial: string, originalSerial: string): string {
     const originalMod = (originalSerial.length % 5);
     let currentMod = (currentSerial.length % 5);
     let adjustedSerial = currentSerial;
