@@ -113,7 +113,7 @@ const App = () => {
     useEffect(() => {
         localStorage.setItem('serialGenState', JSON.stringify(state));
         if (!workerRef.current) {
-            workerRef.current = new Worker('./worker/worker.js', { type: 'module' });
+            workerRef.current = new Worker('./src/worker/worker.js', { type: 'module' });
         }
 
         const handleMessage = (e) => {
