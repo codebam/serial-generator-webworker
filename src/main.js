@@ -27,7 +27,7 @@ const FormGroup = ({ label, children }) => (
     </div>
 );
 
-const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, allInputsDisabled }) => {
+const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, isMerging }) => {
     const handleRangeChange = (e) => {
         const { name, value } = e.target;
         let intValue = parseInt(value, 10);
@@ -73,7 +73,7 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, allInp
                         className={inputClasses}
                         min="0"
                         max={seed.length}
-                        disabled={allInputsDisabled}
+                        disabled={isMerging}
                     />
                 </FormGroup>
                 <FormGroup label="End Index">
@@ -85,7 +85,7 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, allInp
                         className={inputClasses}
                         min="0"
                         max={seed.length}
-                        disabled={allInputsDisabled}
+                        disabled={isMerging}
                     />
                 </FormGroup>
             </div>
@@ -485,8 +485,6 @@ const App = () => {
         tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
     };
 
-    const allInputsDisabled = isMerging;
-
     return (
         <div className="p-4 md:p-8">
             <header className="text-center mb-12">
@@ -504,11 +502,11 @@ const App = () => {
                                 value={state.repository || ''}
                                 onChange={handleRepoEdit}
                                 placeholder="Paste serials here..."
-                                disabled={allInputsDisabled}
+                                disabled={isMerging}
                             ></textarea>
                         </FormGroup>
                         <FormGroup label="Base Serial Seed">
-                            <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={allInputsDisabled}></textarea>
+                            <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={isMerging}></textarea>
                         </FormGroup>
                         <div className="grid grid-cols-2 gap-4">
                             <button onClick={saveState} className={btnClasses.secondary} disabled={isMerging}>Save State</button>
@@ -526,8 +524,7 @@ const App = () => {
 														setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
 												}
 													inputClasses={inputClasses}
-													allInputsDisabled={allInputsDisabled}
-												/>						<FormGroup label="Crossover Chunk Size">
+													                                    												/>						<FormGroup label="Crossover Chunk Size">
 							                            <div className="grid grid-cols-3 gap-4">
 															<input
 																type="number"
@@ -536,7 +533,7 @@ const App = () => {
 																onChange={handleInputChange}
 																className={inputClasses}
 																title="The smallest crossover segment size."
-																disabled={allInputsDisabled}
+																disabled={isMerging}
 															/>								<input
 									type="number"
 									name="rules.maxChunk"
@@ -544,7 +541,7 @@ const App = () => {
 									onChange={handleInputChange}
 									className={inputClasses}
 									title="The largest crossover segment size."
-									disabled={allInputsDisabled}
+									disabled={isMerging}
 								/>
 								<input
 									type="number"
@@ -553,7 +550,7 @@ const App = () => {
 									onChange={handleInputChange}
 									className={inputClasses}
 									title="The preferred crossover segment size."
-									disabled={allInputsDisabled}
+									disabled={isMerging}
 								/>
 							</div>
 						</FormGroup>
@@ -566,7 +563,7 @@ const App = () => {
 															value={state.rules.legendaryChance}
 															onChange={handleInputChange}
 															className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-															disabled={allInputsDisabled}
+															disabled={isMerging}
 														/>						</FormGroup>
 						<FormGroup label="High-Value Part Size Range">
 							<div className="grid grid-cols-2 gap-4">
@@ -576,7 +573,7 @@ const App = () => {
 																	value={state.rules.minPart}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>
 																<input
 																	type="number"
@@ -584,7 +581,7 @@ const App = () => {
 																	value={state.rules.maxPart}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>							</div>
 						</FormGroup>
 						<FormGroup label="Final Tail Length Offset">
@@ -594,7 +591,7 @@ const App = () => {
 															value={state.rules.targetOffset}
 															onChange={handleInputChange}
 															className={inputClasses}
-															disabled={allInputsDisabled}
+															disabled={isMerging}
 														/>						</FormGroup>
 					</Accordion>
 					<Accordion title="🔢 Output Counts">
@@ -606,7 +603,7 @@ const App = () => {
 																	value={state.counts.new}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>								<p className="text-xs text-gray-400">Extends the base seed with random characters, preserving a prefix.</p>
 							</FormGroup>
 							<FormGroup label="TG1">
@@ -616,7 +613,7 @@ const App = () => {
 																	value={state.counts.tg1}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>
 																<p className="text-xs text-gray-400">Subtly mutates the serial by 'flipping' a few characters to adjacent ones (e.g., 'a' to 'b').</p>
 															</FormGroup>
@@ -627,7 +624,7 @@ const App = () => {
 																	value={state.counts.tg2}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>
 																<p className="text-xs text-gray-400">Reverses a random segment of characters within the mutable range.</p>
 															</FormGroup>
@@ -638,7 +635,7 @@ const App = () => {
 																	value={state.counts.tg3}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>
 																<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
 															</FormGroup>
@@ -649,7 +646,7 @@ const App = () => {
 																	value={state.counts.tg4}
 																	onChange={handleInputChange}
 																	className={inputClasses}
-																	disabled={allInputsDisabled}
+																	disabled={isMerging}
 																/>								<p className="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
 							</FormGroup>
 						</div>
@@ -715,7 +712,7 @@ const App = () => {
                                 value={state.validationChars}
                                 onChange={handleInputChange}
                                 className={inputClasses}
-                                disabled={allInputsDisabled}
+                                disabled={isMerging}
                             />
                         </FormGroup>
                         <button
