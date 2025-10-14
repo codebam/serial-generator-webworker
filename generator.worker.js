@@ -614,19 +614,36 @@ self.onmessage = async function (e) {
 
 									dynamicTargetLength,
 
-									protectedStartLength,
+									0, // Ignore mutable range
 
 									config.minChunkSize,
 
 									config.maxChunkSize,
 
-									config.targetChunkSize,
+									config.targetChunkSize
 
 								);
 
 		                        break;
 
-		                    case 'TG3':
+		                    case 'TG3': // Was TG4
+		                        mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+		                        if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+		                            if (debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
+		                            const part = randomChoice(highValueParts).slice();
+		                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+		                            if (availableMutableSpace >= part.length) {
+		                                const numRepeats = Math.floor(availableMutableSpace / part.length);
+		                                if (numRepeats > 0) {
+		                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
+		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+		                                    if (debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+		                                }
+		                            }
+		                        }
+		                        break;
+
+		                    case 'TG4': // Was TG3
 
 		                        // Start with a crossover base
 
@@ -638,13 +655,13 @@ self.onmessage = async function (e) {
 
 									dynamicTargetLength,
 
-									protectedStartLength,
+									0, // Ignore mutable range for crossover
 
 									config.minChunkSize,
 
 									config.maxChunkSize,
 
-									config.targetChunkSize,
+									config.targetChunkSize
 
 								);
 
@@ -652,13 +669,12 @@ self.onmessage = async function (e) {
 
 		                        if (getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
 
-		                            if(debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
+		                            if (debugMode) console.log('[DEBUG] > TG4 Legendary Stacking Triggered!');
 
 		                            const part = randomChoice(highValueParts).slice();
 
 		                            // Use the final target length for calculation, not the base tail length
-
-		                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+		                            const availableMutableSpace = dynamicTargetLength - 0; // Crossover was on the whole tail
 
 		                            if (availableMutableSpace >= part.length) {
 
@@ -671,6 +687,18 @@ self.onmessage = async function (e) {
 		                                    // Replace the end of the tail with the repeated block
 
 		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+
+		                                    if (debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+
+		                                }
+
+		                            }
+
+		                        }
+
+		                        mutatedTail = generateTargetedMutation(mutatedTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+
+		                        break;ail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
 
 		                                    if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
 
