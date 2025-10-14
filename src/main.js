@@ -1,8 +1,8 @@
-import Accordion from './components/Accordion.js';
-import Dropdown from './components/Dropdown.js';
-import FormGroup from './components/FormGroup.js';
-import MutableRangeSelector from './components/MutableRangeSelector.js';
-import SerialEditor from './components/SerialEditor.js';
+import Accordion from './src/components/Accordion.js';
+import Dropdown from './src/components/Dropdown.js';
+import FormGroup from './src/components/FormGroup.js';
+import MutableRangeSelector from './src/components/MutableRangeSelector.js';
+import SerialEditor from './src/components/SerialEditor.js';
 
 const { useState, useEffect, useRef } = React;
 
