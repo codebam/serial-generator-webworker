@@ -27,7 +27,7 @@ const FormGroup = ({ label, children }) => (
     </div>
 );
 
-const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
+const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses, allInputsDisabled }) => {
     const handleRangeChange = (e) => {
         const { name, value } = e.target;
         let intValue = parseInt(value, 10);
@@ -73,6 +73,7 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
                         className={inputClasses}
                         min="0"
                         max={seed.length}
+                        disabled={allInputsDisabled}
                     />
                 </FormGroup>
                 <FormGroup label="End Index">
@@ -84,6 +85,7 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
                         className={inputClasses}
                         min="0"
                         max={seed.length}
+                        disabled={allInputsDisabled}
                     />
                 </FormGroup>
             </div>
@@ -148,6 +150,9 @@ const App = () => {
     const [outputYaml, setOutputYaml] = useState('');
     const [fullYaml, setFullYaml] = useState('');
     const [filteredYaml, setFilteredYaml] = useState('');
+    const [liveMerge, setLiveMerge] = useState(false);
+    const [baseYaml, setBaseYaml] = useState('');
+    const [isMerging, setIsMerging] = useState(false);
 
     const workerRef = useRef(null);
     const chartRef = useRef(null);
@@ -251,6 +256,12 @@ const App = () => {
             }
         };
     }, [state]);
+
+    useEffect(() => {
+        if (liveMerge && baseYaml && fullYaml && !isMerging) {
+            mergeYAML(baseYaml);
+        }
+    }, [fullYaml, liveMerge, baseYaml, isMerging]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -356,57 +367,57 @@ const App = () => {
         URL.revokeObjectURL(link.href);
     };
 
-    const importAndMergeYAML = (event) => {
-        const file = event.target.files[0];
-        if (!file) {
+    const mergeYAML = (baseYamlString) => {
+        if (!baseYamlString) {
+            setStatusMessage('❌ ERROR: No base YAML selected.');
             return;
         }
-        const reader = new FileReader();
-        reader.onload = (e) => {
+        setIsMerging(true);
+        setStatusMessage('Merging YAML...');
+        try {
+            const importedYaml = jsyaml.load(baseYamlString);
+
+            let generatedSerialsYaml;
             try {
-                const importedYamlString = e.target.result;
-                const importedYaml = jsyaml.load(importedYamlString);
+                generatedSerialsYaml = jsyaml.load(fullYaml);
+            } catch (e) {
+                generatedSerialsYaml = jsyaml.load('---' + fullYaml);
+            }
 
-                let generatedSerialsYaml;
-                try {
-                    generatedSerialsYaml = jsyaml.load(fullYaml);
-                } catch (e) {
-                    generatedSerialsYaml = jsyaml.load('---' + fullYaml);
-                }
-
-                const findAndReplaceBackpack = (targetObject, backpackData) => {
-                    for (const key in targetObject) {
-                        if (key === 'backpack') {
-                            targetObject[key] = backpackData;
+            const findAndReplaceBackpack = (targetObject, backpackData) => {
+                for (const key in targetObject) {
+                    if (key === 'backpack') {
+                        targetObject[key] = backpackData;
+                        return true;
+                    }
+                    if (typeof targetObject[key] === 'object' && targetObject[key] !== null) {
+                        if (findAndReplaceBackpack(targetObject[key], backpackData)) {
                             return true;
                         }
-                        if (typeof targetObject[key] === 'object' && targetObject[key] !== null) {
-                            if (findAndReplaceBackpack(targetObject[key], backpackData)) {
-                                return true;
-                            }
-                        }
                     }
-                    return false;
-                };
-
-                if (generatedSerialsYaml && generatedSerialsYaml.state && generatedSerialsYaml.state.inventory && generatedSerialsYaml.state.inventory.items && generatedSerialsYaml.state.inventory.items.backpack) {
-                    if (findAndReplaceBackpack(importedYaml, generatedSerialsYaml.state.inventory.items.backpack)) {
-                        const mergedYamlString = jsyaml.dump(importedYaml, { lineWidth: -1, quotingType: "'" });
-                        setOutputYaml(mergedYamlString);
-                        setStatusMessage('YAML merged successfully. Ready to download.');
-                    } else {
-                        setStatusMessage('❌ ERROR: Could not find a suitable location to merge the serials.');
-                    }
-                } else {
-                    setStatusMessage('❌ ERROR: No generated serials to merge.');
                 }
-            } catch (error) {
-                console.error('Failed to merge YAML:', error);
-                setStatusMessage('❌ ERROR: Failed to merge YAML.');
+                return false;
+            };
+
+            if (generatedSerialsYaml && generatedSerialsYaml.state && generatedSerialsYaml.state.inventory && generatedSerialsYaml.state.inventory.items && generatedSerialsYaml.state.inventory.items.backpack) {
+                if (findAndReplaceBackpack(importedYaml, generatedSerialsYaml.state.inventory.items.backpack)) {
+                    const mergedYamlString = jsyaml.dump(importedYaml, { lineWidth: -1, quotingType: "'" });
+                    setOutputYaml(mergedYamlString);
+                    setStatusMessage('YAML merged successfully. Ready to download.');
+                } else {
+                    setStatusMessage('❌ ERROR: Could not find a suitable location to merge the serials.');
+                }
+            } else {
+                setStatusMessage('❌ ERROR: No generated serials to merge.');
             }
-        };
-        reader.readAsText(file);
+        } catch (error) {
+            console.error('Failed to merge YAML:', error);
+            setStatusMessage('❌ ERROR: Failed to merge YAML.');
+        }
+        setIsMerging(false);
     };
+
+
 
     const saveState = () => {
         try {
@@ -452,6 +463,18 @@ const App = () => {
         reader.readAsText(file);
     };
 
+    const handleBaseYamlChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setBaseYaml(e.target.result);
+            setStatusMessage('Base YAML loaded for live merging.');
+        };
+        reader.readAsText(file);
+    };
     const inputClasses =
         'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
     const btnClasses = {
@@ -461,6 +484,8 @@ const App = () => {
             'py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50',
         tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
     };
+
+    const allInputsDisabled = isMerging;
 
     return (
         <div className="p-4 md:p-8">
@@ -479,45 +504,47 @@ const App = () => {
                                 value={state.repository || ''}
                                 onChange={handleRepoEdit}
                                 placeholder="Paste serials here..."
+                                disabled={allInputsDisabled}
                             ></textarea>
                         </FormGroup>
                         <FormGroup label="Base Serial Seed">
-                            <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
+                            <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={allInputsDisabled}></textarea>
                         </FormGroup>
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={saveState} className={btnClasses.secondary}>Save State</button>
-                            <label className={`${btnClasses.secondary} text-center cursor-pointer`}>
+                            <button onClick={saveState} className={btnClasses.secondary} disabled={isMerging}>Save State</button>
+                            <label className={`${btnClasses.secondary} text-center cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 Restore State
-                                <input type="file" accept=".yaml,.yml" onChange={restoreState} className="hidden" />
+                                <input type="file" accept=".yaml,.yml" onChange={restoreState} className="hidden" disabled={isMerging} />
                             </label>
                         </div>
                     </Accordion>					<Accordion title="🧬 Mutation Rules" open={true}>
-						<MutableRangeSelector
-							seed={state.seed}
-							start={state.rules.mutableStart}
-							end={state.rules.mutableEnd}
-							setRange={({ start, end }) =>
-								setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
-						}
-							inputClasses={inputClasses}
-						/>
-						<FormGroup label="Crossover Chunk Size">
-							<div className="grid grid-cols-3 gap-4">
-								<input
-									type="number"
-									name="rules.minChunk"
-									value={state.rules.minChunk}
-									onChange={handleInputChange}
-									className={inputClasses}
-									title="The smallest crossover segment size."
-								/>
-								<input
+						                        <MutableRangeSelector
+													seed={state.seed}
+													start={state.rules.mutableStart}
+													end={state.rules.mutableEnd}
+													setRange={({ start, end }) =>
+														setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
+												}
+													inputClasses={inputClasses}
+													allInputsDisabled={allInputsDisabled}
+												/>						<FormGroup label="Crossover Chunk Size">
+							                            <div className="grid grid-cols-3 gap-4">
+															<input
+																type="number"
+																name="rules.minChunk"
+																value={state.rules.minChunk}
+																onChange={handleInputChange}
+																className={inputClasses}
+																title="The smallest crossover segment size."
+																disabled={allInputsDisabled}
+															/>								<input
 									type="number"
 									name="rules.maxChunk"
 									value={state.rules.maxChunk}
 									onChange={handleInputChange}
 									className={inputClasses}
 									title="The largest crossover segment size."
+									disabled={allInputsDisabled}
 								/>
 								<input
 									type="number"
@@ -526,109 +553,114 @@ const App = () => {
 									onChange={handleInputChange}
 									className={inputClasses}
 									title="The preferred crossover segment size."
+									disabled={allInputsDisabled}
 								/>
 							</div>
 						</FormGroup>
 						<FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
-							<input
-								type="range"
-								name="rules.legendaryChance"
-								min="0"
-								max="100"
-								value={state.rules.legendaryChance}
-								onChange={handleInputChange}
-								className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-							/>
-						</FormGroup>
+							                                <input
+															type="range"
+															name="rules.legendaryChance"
+															min="0"
+															max="100"
+															value={state.rules.legendaryChance}
+															onChange={handleInputChange}
+															className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+															disabled={allInputsDisabled}
+														/>						</FormGroup>
 						<FormGroup label="High-Value Part Size Range">
 							<div className="grid grid-cols-2 gap-4">
-								<input
-									type="number"
-									name="rules.minPart"
-									value={state.rules.minPart}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<input
-									type="number"
-									name="rules.maxPart"
-									value={state.rules.maxPart}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-							</div>
+								                                <input
+																	type="number"
+																	name="rules.minPart"
+																	value={state.rules.minPart}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>
+																<input
+																	type="number"
+																	name="rules.maxPart"
+																	value={state.rules.maxPart}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>							</div>
 						</FormGroup>
 						<FormGroup label="Final Tail Length Offset">
-							<input
-								type="number"
-								name="rules.targetOffset"
-								value={state.rules.targetOffset}
-								onChange={handleInputChange}
-								className={inputClasses}
-							/>
-						</FormGroup>
+							                                <input
+															type="number"
+															name="rules.targetOffset"
+															value={state.rules.targetOffset}
+															onChange={handleInputChange}
+															className={inputClasses}
+															disabled={allInputsDisabled}
+														/>						</FormGroup>
 					</Accordion>
 					<Accordion title="🔢 Output Counts">
 						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
 							<FormGroup label="NEW">
-								<input
-									type="number"
-									name="counts.new"
-									value={state.counts.new}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<p className="text-xs text-gray-400">Extends the base seed with random characters, preserving a prefix.</p>
+								                                <input
+																	type="number"
+																	name="counts.new"
+																	value={state.counts.new}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>								<p className="text-xs text-gray-400">Extends the base seed with random characters, preserving a prefix.</p>
 							</FormGroup>
 							<FormGroup label="TG1">
-								<input
-									type="number"
-									name="counts.tg1"
-									value={state.counts.tg1}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<p className="text-xs text-gray-400">Subtly mutates the serial by 'flipping' a few characters to adjacent ones (e.g., 'a' to 'b').</p>
-							</FormGroup>
-							<FormGroup label="TG2">
-								<input
-									type="number"
-									name="counts.tg2"
-									value={state.counts.tg2}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<p className="text-xs text-gray-400">Reverses a random segment of characters within the mutable range.</p>
-							</FormGroup>
-							<FormGroup label="TG3">
-								<input
-									type="number"
-									name="counts.tg3"
-									value={state.counts.tg3}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
-							</FormGroup>
-							<FormGroup label="TG4">
-								<input
-									type="number"
-									name="counts.tg4"
-									value={state.counts.tg4}
-									onChange={handleInputChange}
-									className={inputClasses}
-								/>
-								<p className="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
+								                                <input
+																	type="number"
+																	name="counts.tg1"
+																	value={state.counts.tg1}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>
+																<p className="text-xs text-gray-400">Subtly mutates the serial by 'flipping' a few characters to adjacent ones (e.g., 'a' to 'b').</p>
+															</FormGroup>
+															<FormGroup label="TG2">
+																<input
+																	type="number"
+																	name="counts.tg2"
+																	value={state.counts.tg2}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>
+																<p className="text-xs text-gray-400">Reverses a random segment of characters within the mutable range.</p>
+															</FormGroup>
+															<FormGroup label="TG3">
+																<input
+																	type="number"
+																	name="counts.tg3"
+																	value={state.counts.tg3}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>
+																<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
+															</FormGroup>
+															<FormGroup label="TG4">
+																<input
+																	type="number"
+																	name="counts.tg4"
+																	value={state.counts.tg4}
+																	onChange={handleInputChange}
+																	className={inputClasses}
+																	disabled={allInputsDisabled}
+																/>								<p className="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
 							</FormGroup>
 						</div>
 					</Accordion>
 
                     <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={startGeneration} disabled={isGenerating} className={btnClasses.primary}>
+                            <button onClick={startGeneration} disabled={isGenerating || isMerging} className={btnClasses.primary}>
                                 Generate Serials
                             </button>
-                            <button onClick={resetForm} disabled={isGenerating} className={btnClasses.secondary}>
+                            <button onClick={resetForm} disabled={isGenerating || isMerging} className={btnClasses.secondary}>
                                 Reset All
                             </button>
                         </div>
@@ -641,6 +673,7 @@ const App = () => {
                                     checked={state.generateStats}
                                     onChange={handleInputChange}
                                     className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                                    disabled={isMerging}
                                 />
                                 <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">
                                     Generate Part Statistics
@@ -654,6 +687,7 @@ const App = () => {
                                     checked={state.debugMode}
                                     onChange={handleInputChange}
                                     className="h-4 w-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
+                                    disabled={isMerging}
                                 />
                                 <label htmlFor="debugMode" className="ml-2 text-sm font-medium text-gray-300">
                                     Enable Debug Logging
@@ -681,6 +715,7 @@ const App = () => {
                                 value={state.validationChars}
                                 onChange={handleInputChange}
                                 className={inputClasses}
+                                disabled={allInputsDisabled}
                             />
                         </FormGroup>
                         <button
@@ -699,6 +734,7 @@ const App = () => {
                                 })
                             }
                             className={btnClasses.secondary}
+                            disabled={isMerging}
                         >
                             Filter
                         </button>
@@ -722,17 +758,24 @@ const App = () => {
                         <div className="p-4 flex justify-between items-center border-b border-gray-700">
                             <h3 className="text-lg font-semibold">📝 YAML Output (Read-Only)</h3>
                             <div className="flex gap-2">
-                                <button onClick={copyToClipboard} className={btnClasses.tertiary}>
+                                <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
                                     {copyText}
                                 </button>
-                                <button onClick={downloadYAML} className={btnClasses.tertiary}>
+                                <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
                                     Download
                                 </button>
-                                <label className={`${btnClasses.tertiary} text-center cursor-pointer`}>
+                                <button onClick={() => mergeYAML(baseYaml)} className={btnClasses.tertiary} disabled={!baseYaml || isMerging}>
                                     Import & Merge
-                                    <input type="file" accept=".yaml,.yml" onChange={importAndMergeYAML} className="hidden" />
-                                </label>
-                                <button onClick={() => setOutputYaml('')} className={btnClasses.tertiary}>
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" id="liveMerge" checked={liveMerge} onChange={(e) => setLiveMerge(e.target.checked)} disabled={!baseYaml || isMerging} />
+                                    <label htmlFor="liveMerge">Live Merge</label>
+                                    <label className={`${btnClasses.tertiary} text-center cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                        Select Base YAML
+                                        <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
+                                    </label>
+                                </div>
+                                <button onClick={() => setOutputYaml('')} className={btnClasses.tertiary} disabled={isMerging}>
                                     Clear
                                 </button>
                             </div>
