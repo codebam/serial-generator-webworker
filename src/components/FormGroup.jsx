@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+
 
 const FormGroup = ({ label, children }) => (
     <div className="flex flex-col gap-2">
@@ -7,4 +9,4 @@ const FormGroup = ({ label, children }) => (
     </div>
 );
 
-export default FormGroup;
+const FormGroup = ({ label, children }) => (

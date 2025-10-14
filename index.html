@@ -22,16 +22,22 @@
 			};
 		</script>
 
-		<link rel="stylesheet" href="/serial-generator-webworker/public/style.css" />
+		<link rel="stylesheet" href="./public/style.css" />
+		<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 	</head>
 	<body class="bg-gray-900 text-gray-200 font-sans">
 		<div id="root"></div>
 
-		<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-		<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+		<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+		<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-		<script type="module" src="/serial-generator-webworker/src/index.js"></script>
+		<script type="text/babel" data-presets="react" src="./src/components/Accordion.jsx"></script>
+		<script type="text/babel" data-presets="react" src="./src/components/FormGroup.jsx"></script>
+		<script type="text/babel" data-presets="react" src="./src/components/MutableRangeSelector.jsx"></script>
+		<script type="text/babel" data-presets="react" src="./src/App.jsx"></script>
+		<script type="text/babel" data-presets="react" src="./src/index.js"></script>
 	</body>
 </html>

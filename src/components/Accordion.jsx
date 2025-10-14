@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+
 
 const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
     <details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
@@ -19,4 +21,4 @@ const Accordion = ({ title, children, open = false, className = '', noPadding = 
     </details>
 );
 
-export default Accordion;
+

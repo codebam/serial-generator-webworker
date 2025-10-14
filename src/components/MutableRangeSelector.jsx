@@ -1,4 +1,5 @@
-import React from 'react';
+
+
 import FormGroup from './FormGroup.jsx';
 
 const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
@@ -65,4 +66,4 @@ const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
     );
 };
 
-export default MutableRangeSelector;
+const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {

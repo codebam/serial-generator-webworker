@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Accordion from './components/Accordion.jsx';
-import FormGroup from './components/FormGroup.jsx';
-import MutableRangeSelector from './components/MutableRangeSelector.jsx';
+const { useState, useEffect, useRef } = React;
+
 
 const App = () => {
     const defaultState = {
@@ -113,7 +111,7 @@ const App = () => {
     useEffect(() => {
         localStorage.setItem('serialGenState', JSON.stringify(state));
         if (!workerRef.current) {
-            workerRef.current = new Worker('/serial-generator-webworker/src/worker/worker.js', { type: 'module' });
+            workerRef.current = new Worker('./src/worker/worker.js', { type: 'module' });
         }
 
         const handleMessage = (e) => {
@@ -604,4 +602,4 @@ const App = () => {
     );
 };
 
-export default App;
+
