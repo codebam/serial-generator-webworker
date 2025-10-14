@@ -206,44 +206,54 @@
 					localStorage.setItem('serialGenState', JSON.stringify(state));
 					if (!workerRef.current) {
 						workerRef.current = new Worker('generator.worker.js');
-						workerRef.current.onmessage = (e) => {
-							const { type, payload } = e.data;
-							switch (type) {
-								case 'progress':
-									setProgress((payload.processed / payload.total) * 100);
-									setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
-									break;
-								case 'stats_complete':
+					}
+
+					const handleMessage = (e) => {
+						const { type, payload } = e.data;
+						switch (type) {
+							case 'progress':
+								setProgress((payload.processed / payload.total) * 100);
+								setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+								break;
+							case 'stats_complete':
+								if (state.generateStats && payload.chartData) {
+									updateChart(payload.chartData);
+								}
+								break;
+							case 'complete':
+								if (payload.validationResult) {
+									setValidationResult(payload.validationResult);
+									setFilteredYaml(payload.validatedYaml || '');
+									const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
+									setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
+									setOutputYaml(payload.validatedYaml || '');
 									if (state.generateStats && payload.chartData) {
 										updateChart(payload.chartData);
 									}
-									break;
-								case 'complete':
-									if (payload.validationResult) {
-										setValidationResult(payload.validationResult);
-										setFilteredYaml(payload.validatedYaml || '');
-										const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
-										setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
-										setOutputYaml(payload.validatedYaml || '');
-										if (state.generateStats && payload.chartData) {
-											updateChart(payload.chartData);
-										}
-									} else {
-										setIsGenerating(false);
-										setOutputYaml(payload.truncatedYaml);
-										setFullYaml(payload.yaml);
-										setFilteredYaml('');
-										setValidationResult('');
-										setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-									}
-									break;
-								case 'error':
+								} else {
 									setIsGenerating(false);
-									setStatusMessage(`❌ ERROR: ${payload.message}`);
-									break;
-							}
-						};
-					}
+									setOutputYaml(payload.truncatedYaml);
+									setFullYaml(payload.yaml);
+									setFilteredYaml('');
+									setValidationResult('');
+									setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+								}
+								break;
+							case 'error':
+								setIsGenerating(false);
+								setStatusMessage(`❌ ERROR: ${payload.message}`);
+								break;
+						}
+					};
+
+					workerRef.current.onmessage = handleMessage;
+
+					return () => {
+						if (workerRef.current) {
+							workerRef.current.terminate();
+							workerRef.current = null;
+						}
+					};
 				}, [state]);
 
 				const handleInputChange = (e) => {

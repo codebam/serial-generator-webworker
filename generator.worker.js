@@ -291,7 +291,7 @@ function performWindowedCrossover(baseTail, parentTail, finalLength, protectedSt
     // If the parent is long enough to provide a chunk, proceed.
 	if (parentTail.length >= finalChunkSize) {
         // Take a chunk from ANYWHERE in the parent.
-		const chunkStartInParent = randomInt(0, parentTail.length - finalChunkSize);
+		const chunkStartInParent = randomInt(0, Math.max(0, parentTail.length - finalChunkSize));
 		const chunk = parentTail.substring(chunkStartInParent, chunkStartInParent + finalChunkSize);
         
         if (debugMode) console.log(`[DEBUG]   > Crossover: Injecting chunk "${chunk}" after protected zone.`);
@@ -532,19 +532,26 @@ self.onmessage = async function (e) {
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);
 		const legendaryStackingChance = config.legendaryChance / 100.0;
 
-				const serialsToGenerate = [];
+				const shuffleArray = (array) => {
+			for (let i = array.length - 1; i > 0; i--) {
+				const j = Math.floor(getNextRandom() * (i + 1));
+				[array[i], array[j]] = [array[j], array[i]];
+			}
+		};
 
-				for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
+		const serialsToGenerate = [];
 
-				for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
+		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
 
-				for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
+		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
 
-				for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
+		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
 
-				for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
+		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
 
-				serialsToGenerate.sort(() => getNextRandom() - 0.5); // Shuffle the generation order
+		for (let i = 0; i < config.tg4Count; i++) serialsToGenerate.push({ tg: 'TG4' });
+
+		shuffleArray(serialsToGenerate); // Shuffle the generation order
 
 		
 
@@ -603,6 +610,16 @@ self.onmessage = async function (e) {
 		                                            		                        mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, newBaseTail.length);
 		                                            		                        break;
 		                    case 'TG1':
+		                        mutatedTail = performWindowedCrossover(
+									baseTail,
+									parentTail,
+									dynamicTargetLength,
+									0, // Ignore mutable range
+									config.minChunkSize,
+									config.maxChunkSize,
+									config.targetChunkSize
+								);
+		                        break;
 
 		                    case 'TG2':
 
@@ -627,7 +644,15 @@ self.onmessage = async function (e) {
 		                        break;
 
 		                    case 'TG3': // Was TG4
-		                        mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+		                        mutatedTail = performWindowedCrossover(
+									baseTail,
+									parentTail,
+									dynamicTargetLength,
+									adjustedMutableStart,
+									config.minChunkSize,
+									config.maxChunkSize,
+									config.targetChunkSize
+								);
 		                        if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
 		                            if (debugMode) console.log('[DEBUG] > TG3 Legendary Stacking Triggered!');
 		                            const part = randomChoice(highValueParts).slice();
@@ -697,19 +722,6 @@ self.onmessage = async function (e) {
 		                        }
 
 		                        mutatedTail = generateTargetedMutation(mutatedTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-
-		                        break;ail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
-
-		                                    if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
-
-		                                }
-
-		                            }
-
-		                        }
-
-		                        mutatedTail = generateTargetedMutation(mutatedTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-
 		                        break;
 
 		                    case 'TG4':
