@@ -808,6 +808,7 @@ const App = () => {
                             </div>
                         )}
                     </Accordion>
+                    <SerialEditor />
                 </div>
 
                 <div className="flex flex-col gap-4 h-full">
@@ -869,6 +870,255 @@ const App = () => {
 
 
 
+
+const SerialEditor = () => {
+    const [serial, setSerial] = useState('');
+    const [analysis, setAnalysis] = useState(null);
+    const [binary, setBinary] = useState('');
+    const [modifiedBinary, setModifiedBinary] = useState('');
+    const [selection, setSelection] = useState({ start: 0, end: 0 });
+
+    const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
+    const MANUFACTURER_PATTERNS = {
+        'Jakobs': ['2210', '2211', '2212', '2213'],
+        'Maliwan': ['2214', '2215', '2216', '2217'],
+        'Torgue': ['2218', '2219', '221a', '221b'],
+        'Daedalus': ['221c', '221d', '221e', '221f'],
+        'COV': ['2220', '2221', '2222', '2223']
+    };
+
+    const decodeSerial = () => {
+        if (!serial.startsWith('@U')) {
+            alert('Invalid serial format. It must start with @U');
+            return;
+        }
+
+        const encoded = serial.substring(2);
+        let decoded_bytes = [];
+        let current_value = 0;
+        let char_count = 0;
+
+        for (let i = 0; i < encoded.length; i++) {
+            const char = encoded[i];
+            const index = BASE85_ALPHABET.indexOf(char);
+            if (index === -1) {
+                continue; // Skip invalid characters
+            }
+            current_value = current_value * 85 + index;
+            char_count++;
+            if (char_count === 5) {
+                decoded_bytes.push((current_value >> 24) & 0xFF);
+                decoded_bytes.push((current_value >> 16) & 0xFF);
+                decoded_bytes.push((current_value >> 8) & 0xFF);
+                decoded_bytes.push(current_value & 0xFF);
+                current_value = 0;
+                char_count = 0;
+            }
+        }
+
+        if (char_count > 0) {
+            for (let i = char_count; i < 5; i++) {
+                current_value = current_value * 85 + 84;
+            }
+            for (let i = 0; i < char_count - 1; i++) {
+                decoded_bytes.push((current_value >> (24 - i * 8)) & 0xFF);
+            }
+        }
+
+        const mirrored_bytes = decoded_bytes.map(byte => {
+            let mirrored = 0;
+            for (let j = 0; j < 8; j++) {
+                if ((byte >> j) & 1) {
+                    mirrored |= 1 << (7 - j);
+                }
+            }
+            return mirrored;
+        });
+
+        const hex_data = mirrored_bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+        const binary_string = mirrored_bytes.map(b => b.toString(2).padStart(8, '0')).join('');
+        
+        setBinary(binary_string);
+        setModifiedBinary(binary_string);
+
+        // Classification
+        let serialType = 'UNKNOWN';
+        if (binary_string.startsWith('0010000100')) {
+            serialType = 'TYPE A';
+        } else if (binary_string.startsWith('0010000110')) {
+            serialType = 'TYPE B';
+        }
+
+        // Manufacturer
+        const first_4_bytes = hex_data.substring(0, 8);
+        let manufacturer = 'Unknown';
+        for (const [m, patterns] of Object.entries(MANUFACTURER_PATTERNS)) {
+            for (const pattern of patterns) {
+                if (first_4_bytes.startsWith(pattern)) {
+                    manufacturer = m;
+                    break;
+                }
+            }
+            if (manufacturer !== 'Unknown') break;
+        }
+        
+        const safeEditStart = serial.indexOf('u~Q') + 3;
+        const safeEditEnd = serial.length - 12;
+
+        const safeStartBits = 32;
+        const safeEndBits = binary_string.length - 24;
+        setSelection({ start: safeStartBits, end: safeEndBits });
+
+        setAnalysis({
+            type: serialType,
+            manufacturer: manufacturer,
+            hex: hex_data,
+            safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
+            safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
+        });
+    };
+
+    const handleSelectionChange = (e) => {
+        const { name, value } = e.target;
+        setSelection(prev => ({ ...prev, [name]: parseInt(value, 10) }));
+    };
+
+    const modifyBits = (modification) => {
+        const { start, end } = selection;
+        if (start > end) {
+            alert('Start index cannot be greater than end index.');
+            return;
+        }
+        const prefix = modifiedBinary.substring(0, start);
+        const suffix = modifiedBinary.substring(end);
+        const selectedBits = modifiedBinary.substring(start, end);
+        let newBits = '';
+        switch (modification) {
+            case 'zero':
+                newBits = '0'.repeat(selectedBits.length);
+                break;
+            case 'one':
+                newBits = '1'.repeat(selectedBits.length);
+                break;
+            case 'invert':
+                newBits = selectedBits.split('').map(bit => (bit === '0' ? '1' : '0')).join('');
+                break;
+            case 'random':
+                newBits = Array.from({ length: selectedBits.length }, () => Math.round(Math.random())).join('');
+                break;
+            default:
+                newBits = selectedBits;
+        }
+        setModifiedBinary(prefix + newBits + suffix);
+    };
+
+    const [newSerial, setNewSerial] = useState('');
+
+    const encodeSerial = () => {
+        const bytes = [];
+        for (let i = 0; i < modifiedBinary.length; i += 8) {
+            bytes.push(parseInt(modifiedBinary.substring(i, i + 8), 2));
+        }
+
+        const unmirrored_bytes = bytes.map(byte => {
+            let unmirrored = 0;
+            for (let j = 0; j < 8; j++) {
+                if ((byte >> j) & 1) {
+                    unmirrored |= 1 << (7 - j);
+                }
+            }
+            return unmirrored;
+        });
+
+        let encoded = '';
+        for (let i = 0; i < unmirrored_bytes.length; i += 4) {
+            let chunk = unmirrored_bytes.slice(i, i + 4);
+            let value = 0;
+            if (chunk.length < 4) {
+                while (chunk.length < 4) {
+                    chunk.push(0);
+                }
+            }
+            value = (chunk[0] << 24) | (chunk[1] << 16) | (chunk[2] << 8) | chunk[3];
+
+            let block = '';
+            for (let j = 0; j < 5; j++) {
+                block = BASE85_ALPHABET[value % 85] + block;
+                value = Math.floor(value / 85);
+            }
+            encoded += block;
+        }
+
+        const originalPaddedLen = (Math.ceil(unmirrored_bytes.length / 4) * 5);
+        const finalEncoded = encoded.substring(0, originalPaddedLen);
+
+        const originalLenMod5 = serial.substring(2).length % 5;
+        let finalSerial = '@U' + finalEncoded;
+        while ((finalSerial.length - 2) % 5 !== originalLenMod5 && finalSerial.length > 2) {
+            finalSerial = finalSerial.slice(0, -1);
+        }
+        
+        setNewSerial(finalSerial);
+    };
+
+    const inputClasses = 'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
+    const btnClasses = {
+        primary: 'py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed',
+        secondary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
+    };
+
+    return (
+        <Accordion title="🔧 Serial Editor" open={true}>
+            <FormGroup label="Serial to Analyze">
+                <textarea
+                    className={`${inputClasses} min-h-[80px]`}
+                    value={serial}
+                    onChange={(e) => setSerial(e.target.value)}
+                    placeholder="Paste serial here..."
+                ></textarea>
+            </FormGroup>
+            <button onClick={decodeSerial} className={btnClasses.primary}>Analyze</button>
+            {analysis && (
+                <div className="flex flex-col gap-2 mt-4">
+                    <h3 className="text-lg font-semibold">Analysis Results</h3>
+                    <p><strong>Type:</strong> {analysis.type}</p>
+                    <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
+                    <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">{analysis.hex}</span></p>
+                    <p><strong>Safe Edit Start (after u~Q):</strong> {analysis.safeEditStart}</p>
+                    <p><strong>Safe Edit End (preserve trailer):</strong> {analysis.safeEditEnd}</p>
+                    <h3 className="text-lg font-semibold mt-2">Binary Data Editor</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormGroup label="Start Index">
+                            <input type="number" name="start" value={selection.start} onChange={handleSelectionChange} className={inputClasses} />
+                        </FormGroup>
+                        <FormGroup label="End Index">
+                            <input type="number" name="end" value={selection.end} onChange={handleSelectionChange} className={inputClasses} />
+                        </FormGroup>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mt-2">
+                        <button onClick={() => modifyBits('zero')} className={btnClasses.secondary}>Set to 0</button>
+                        <button onClick={() => modifyBits('one')} className={btnClasses.secondary}>Set to 1</button>
+                        <button onClick={() => modifyBits('invert')} className={btnClasses.secondary}>Invert</button>
+                        <button onClick={() => modifyBits('random')} className={btnClasses.secondary}>Randomize</button>
+                    </div>
+                    <h3 className="text-lg font-semibold mt-2">Modified Binary Data</h3>
+                    <div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
+                        <span>{modifiedBinary.substring(0, selection.start)}</span>
+                        <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
+                        <span>{modifiedBinary.substring(selection.end)}</span>
+                    </div>
+                    <button onClick={encodeSerial} className={`${btnClasses.primary} mt-4`}>Generate Serial</button>
+                    {newSerial && (
+                        <div className="mt-4">
+                            <h3 className="text-lg font-semibold">New Serial</h3>
+                            <textarea className={`${inputClasses} h-24`} readOnly value={newSerial}></textarea>
+                        </div>
+                    )}
+                </div>
+            )}
+        </Accordion>
+    );
+};
 
 const container = document.getElementById('root');
 
