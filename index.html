@@ -274,7 +274,18 @@
 				const handleRepoSelect = (e) => setState((prev) => ({ ...prev, currentRepo: e.target.value }));
 				const handleRepoEdit = (e) =>
 					setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: e.target.value } }));
-				const handleSeedEdit = (e) => setState((prev) => ({ ...prev, seed: e.target.value }));
+				const handleSeedEdit = (e) => {
+					const newSeed = e.target.value;
+					setState((prev) => ({ 
+						...prev, 
+						seed: newSeed,
+						rules: {
+							...prev.rules,
+							mutableStart: newSeed.length,
+							mutableEnd: newSeed.length
+						}
+					}));
+				};
 
 				const startGeneration = () => {
 					setIsGenerating(true);
