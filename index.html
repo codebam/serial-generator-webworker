@@ -82,404 +82,380 @@
 			);
 
 			const App = () => {
-				// --- STATE MANAGEMENT WITH ALL ORIGINAL DEFAULTS ---
-				const defaultState = {
-					repositoryData: {
-						class_mod: '',
-						shield:
-							'@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
-						ordnance: '',
-						enhancement: '',
-						gun: '',
-						repkit: '',
-					},
-					currentRepo: 'class_mod',
-					seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
-					counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
-					rules: {
-						targetOffset: 250,
-						mutableStart: 13,
-						mutableEnd: 13,
-						minChunk: 3,
-						maxChunk: 7,
-						targetChunk: 5,
-						minPart: 4,
-						maxPart: 8,
-						legendaryChance: 100,
-					},
-					validationChars: 12,
-					generateStats: true,
-					debugMode: false,
-				};
-
-				const [state, setState] = useState(() => {
-					// --- MODIFIED STATE INITIALIZATION ---
-					// This robustly merges saved state with defaults to prevent uncontrolled component warnings.
-					const savedStateJSON = localStorage.getItem('serialGenState');
-					if (savedStateJSON) {
-						try {
-							const savedState = JSON.parse(savedStateJSON);
-							// Deep merge to ensure all keys from defaultState are present
-							return {
-								...defaultState,
-								...savedState,
-								repositoryData: {
-									...defaultState.repositoryData,
-									...(savedState.repositoryData || {}),
-								},
-								counts: {
-									...defaultState.counts,
-									...(savedState.counts || {}),
-								},
-								rules: {
-									...defaultState.rules,
-									...(savedState.rules || {}),
-								},
-							};
-						} catch (error) {
-							console.error('Failed to parse saved state from localStorage:', error);
-							return defaultState; // Fallback to defaults if parsing fails
-						}
-					}
-					return defaultState;
-					// --- END MODIFIED STATE INITIALIZATION ---
-				});
-
-				const [statusMessage, setStatusMessage] = useState('Ready to generate.');
-				const [validationResult, setValidationResult] = useState('');
-				const [progress, setProgress] = useState(0);
-				const [isGenerating, setIsGenerating] = useState(false);
-				const [outputYaml, setOutputYaml] = useState('');
-				const [fullYaml, setFullYaml] = useState('');
-				const [filteredYaml, setFilteredYaml] = useState('');
-
-				const workerRef = useRef(null);
-				const chartRef = useRef(null);
-
-				const updateChart = (chartData) => {
-					if (!state.generateStats || !chartData) return;
-
-					const { labels, data } = chartData;
-
-					const container = document.getElementById('chartContainer');
-					if (container) {
-						const numBars = labels.length;
-						const defaultBars = 10;
-						if (numBars > defaultBars) {
-							const barWidth = 50; // pixels
-							container.style.width = `${numBars * barWidth}px`;
-						} else {
-							container.style.width = '100%';
-						}
-					}
-
-					const ctx = document.getElementById('statsChart').getContext('2d');
-					if (chartRef.current) {
-						chartRef.current.destroy();
-					}
-					chartRef.current = new Chart(ctx, {
-						type: 'bar',
-						data: {
-							labels: labels,
-							datasets: [
-								{
-									label: 'Legendary Part Distribution',
-									data: data,
-									backgroundColor: 'rgba(54, 162, 235, 0.2)',
-									borderColor: 'rgba(54, 162, 235, 1)',
-									borderWidth: 1,
-								},
-							],
-						},
-						options: {
-							maintainAspectRatio: false,
-							scales: {
-								y: {
-									beginAtZero: true,
-								},
-							},
-						},
-					});
-				};
-
-				useEffect(() => {
-					localStorage.setItem('serialGenState', JSON.stringify(state));
-					if (!workerRef.current) {
-						workerRef.current = new Worker('generator.worker.js');
-					}
-
-					const handleMessage = (e) => {
-						const { type, payload } = e.data;
-						switch (type) {
-							case 'progress':
-								setProgress((payload.processed / payload.total) * 100);
-								setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
-								break;
-							case 'stats_complete':
-								if (state.generateStats && payload.chartData) {
-									updateChart(payload.chartData);
-								}
-								break;
-							case 'complete':
-								if (payload.validationResult) {
-									setValidationResult(payload.validationResult);
-									setFilteredYaml(payload.validatedYaml || '');
-									const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
-									setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
-									setOutputYaml(payload.validatedYaml || '');
-									if (state.generateStats && payload.chartData) {
-										updateChart(payload.chartData);
-									}
-								} else {
-									setIsGenerating(false);
-									setOutputYaml(payload.truncatedYaml);
-									setFullYaml(payload.yaml);
-									setFilteredYaml('');
-									setValidationResult('');
-									setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
-								}
-								break;
-							case 'error':
-								setIsGenerating(false);
-								setStatusMessage(`❌ ERROR: ${payload.message}`);
-								break;
-						}
-					};
-
-					workerRef.current.onmessage = handleMessage;
-
-					return () => {
-						if (workerRef.current) {
-							workerRef.current.terminate();
-							workerRef.current = null;
-						}
-					};
-				}, [state]);
-
-				const handleInputChange = (e) => {
-					const { name, value, type, checked } = e.target;
-					// Handle checkboxes
-					if (type === 'checkbox') {
-						const [category, key] = name.split('.');
-						if (key) {
-							setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: checked } }));
-						} else {
-							setState((prev) => ({ ...prev, [name]: checked }));
-						}
-						return;
-					}
-
-					// Handle number and text inputs
-					if (type === 'number' && value !== '' && isNaN(parseInt(value, 10))) {
-						return; // Don't update state for invalid number input
-					}
-					const val = type === 'number' && value !== '' ? parseInt(value, 10) : value;
-					const [category, key] = name.split('.');
-					if (key) {
-						setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
-					} else {
-						setState((prev) => ({ ...prev, [name]: val }));
-					}
-				};
-				const handleRepoSelect = (e) => setState((prev) => ({ ...prev, currentRepo: e.target.value }));
-				const handleRepoEdit = (e) =>
-					setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: e.target.value } }));
-				const handleSeedEdit = (e) => {
-					const newSeed = e.target.value;
-					setState((prev) => ({ 
-						...prev, 
-						seed: newSeed,
-						rules: {
-							...prev.rules,
-							mutableStart: newSeed.length,
-							mutableEnd: newSeed.length
-						}
-					}));
-				};
-
-				const startGeneration = () => {
-					setIsGenerating(true);
-					setStatusMessage('Sending job...');
-					setProgress(0);
-					setValidationResult('');
-					setFilteredYaml('');
-					const config = {
-						seed: state.seed,
-						repositories: state.repositoryData,
-						itemType: state.currentRepo,
-						newCount: parseInt(state.counts.new || '0', 10),
-						tg1Count: parseInt(state.counts.tg1 || '0', 10),
-						tg2Count: parseInt(state.counts.tg2 || '0', 10),
-						tg3Count: parseInt(state.counts.tg3 || '0', 10),
-						tg4Count: parseInt(state.counts.tg4 || '0', 10),
-						minChunkSize: parseInt(state.rules.minChunk || '0', 10),
-						maxChunkSize: parseInt(state.rules.maxChunk || '0', 10),
-						targetChunkSize: parseInt(state.rules.targetChunk || '0', 10),
-						targetOffset: parseInt(state.rules.targetOffset || '0', 10),
-						minPartSize: parseInt(state.rules.minPart || '0', 10),
-						maxPartSize: parseInt(state.rules.maxPart || '0', 10),
-						legendaryChance: parseInt(state.rules.legendaryChance || '0', 10),
-						mutableStart: parseInt(state.rules.mutableStart || '0', 10),
-						mutableEnd: parseInt(state.rules.mutableEnd || '0', 10),
-						gpuBatchSize: 250000,
-						generateStats: state.generateStats,
-						debugMode: state.debugMode,
-					};
-					workerRef.current.postMessage({ type: 'generate', payload: config });
-				};
-
-				const resetForm = () => {
-					if (confirm('Are you sure you want to reset all settings to their original defaults?')) {
-						setState(defaultState);
-						setOutputYaml('');
-						setFullYaml('');
-						setFilteredYaml('');
-						setValidationResult('');
-						setStatusMessage('Settings have been reset to original defaults.');
-						localStorage.removeItem('serialGenState'); // Clear storage on reset
-					}
-				};
-
-				const [copyText, setCopyText] = useState('Copy');
-
-				const copyToClipboard = async () => {
-					const contentToCopy = filteredYaml || fullYaml;
-					if (contentToCopy) {
-						await navigator.clipboard.writeText(contentToCopy);
-						setCopyText('Copied!');
-						setTimeout(() => setCopyText('Copy'), 2000);
-					}
-				};
-
-				const downloadYAML = () => {
-					const hasFilteredContent = !!filteredYaml;
-					const contentToDownload = filteredYaml || fullYaml;
-					if (!contentToDownload) return;
-					const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
-					const link = document.createElement('a');
-					link.href = URL.createObjectURL(blob);
-					link.download = hasFilteredContent ? 'filtered_serials.yaml' : 'generated_serials.yaml';
-					link.click();
-					URL.revokeObjectURL(link.href);
-				};
-
-				const inputClasses =
-					'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
-				const btnClasses = {
-					primary:
-						'py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed',
-					secondary:
-						'py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50',
-					tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
-				};
-
-				const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
-					const handleRangeChange = (e) => {
-						const { name, value } = e.target;
-						let intValue = parseInt(value, 10);
-						if (isNaN(intValue)) intValue = name === 'start' ? start : end;
-
-						let newStart = name === 'start' ? intValue : start;
-						let newEnd = name === 'end' ? intValue : end;
-
-						if (newStart < 0) newStart = 0;
-						if (newEnd > seed.length) newEnd = seed.length;
-						if (newStart > newEnd) {
-							if (name === 'start') newStart = newEnd;
-							else newEnd = newStart;
-						}
-
-						setRange({ start: newStart, end: newEnd });
-					};
-
-					const protectedPrefix = seed.substring(0, start);
-					const mutablePart = seed.substring(start, end);
-					const protectedSuffix = seed.substring(end);
-
-					return (
-						<FormGroup label="Mutable Character Range">
-							<div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
-								<span className="text-gray-500" title="Protected Prefix">
-									{protectedPrefix}
-								</span>
-								<span className="bg-blue-900 text-blue-300 rounded-sm" title="Mutable Part">
-									{mutablePart}
-								</span>
-								<span className="text-gray-500" title="Protected Suffix">
-									{protectedSuffix}
-								</span>
-							</div>
-							<div className="grid grid-cols-2 gap-4">
-								<FormGroup label="Start Index">
-									<input
-										type="number"
-										name="start"
-										value={start}
-										onChange={handleRangeChange}
-										className={inputClasses}
-										min="0"
-										max={seed.length}
-									/>
-								</FormGroup>
-								<FormGroup label="End Index">
-									<input
-										type="number"
-										name="end"
-										value={end}
-										onChange={handleRangeChange}
-										className={inputClasses}
-										min="0"
-										max={seed.length}
-									/>
-								</FormGroup>
-							</div>
-						</FormGroup>
-					);
-				};
-
-				return (
-					<div className="p-4 md:p-8">
-						<header className="text-center mb-12">
-							<h1 className="text-4xl md:text-5xl font-bold text-gray-100">
-								Serial Mutation <span className="text-blue-400">Engine</span>
-							</h1>
-							<p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
-						</header>
-						<main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-7xl mx-auto">
-							<div className="flex flex-col gap-4">
-								<Accordion title="📦 Repository & Base Seed" open={true}>
-									<FormGroup label="Active Repository">
-										<div className="flex items-center gap-2">
-											{' '}
-											<select className={inputClasses} value={state.currentRepo} onChange={handleRepoSelect}>
-												<option value="class_mod">Class Mod</option>
-												<option value="shield">Shield</option>
-												<option value="ordnance">Ordnance</option>
-												<option value="enhancement">Enhancement</option>
-												<option value="gun">Gun</option>
-												<option value="repkit">Repkit</option>
-											</select>
-											<button
-												onClick={() =>
-													setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, [state.currentRepo]: '' } }))
-												}
-												className={btnClasses.tertiary}
-											>
-												Clear
-											</button>
-										</div>
-										<textarea
-											className={`${inputClasses} min-h-[120px]`}
-											value={state.repositoryData[state.currentRepo] || ''}
-											onChange={handleRepoEdit}
-											placeholder="Paste serials here..."
-										></textarea>
-									</FormGroup>
-									<FormGroup label="Base Serial Seed">
-										<textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
-									</FormGroup>
-								</Accordion>
-								<Accordion title="🧬 Mutation Rules" open={true}>
+				                const defaultState = {
+				                    repositoryData: {
+				                        class_mod: '',
+				                        shield:
+				                            '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
+				                        ordnance: '',
+				                        enhancement: '',
+				                        gun: '',
+				                        repkit: '',
+				                    },
+				                    seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
+				                    counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
+				                    rules: {
+				                        targetOffset: 250,
+				                        mutableStart: 13,
+				                        mutableEnd: 13,
+				                        minChunk: 3,
+				                        maxChunk: 7,
+				                        targetChunk: 5,
+				                        minPart: 4,
+				                        maxPart: 8,
+				                        legendaryChance: 100,
+				                    },
+				                    validationChars: 12,
+				                    generateStats: true,
+				                    debugMode: false,
+				                };
+				
+				                const [state, setState] = useState(() => {
+				                    // --- MODIFIED STATE INITIALIZATION ---
+				                    // This robustly merges saved state with defaults to prevent uncontrolled component warnings.
+				                    const savedStateJSON = localStorage.getItem('serialGenState');
+				                    if (savedStateJSON) {
+				                        try {
+				                            const savedState = JSON.parse(savedStateJSON);
+				                            // Deep merge to ensure all keys from defaultState are present
+				                            return {
+				                                ...defaultState,
+				                                ...savedState,
+				                                repositoryData: {
+				                                    ...defaultState.repositoryData,
+				                                    ...(savedState.repositoryData || {}),
+				                                },
+				                                counts: {
+				                                    ...defaultState.counts,
+				                                    ...(savedState.counts || {}),
+				                                },
+				                                rules: {
+				                                    ...defaultState.rules,
+				                                    ...(savedState.rules || {}),
+				                                },
+				                            };
+				                        } catch (error) {
+				                            console.error('Failed to parse saved state from localStorage:', error);
+				                            return defaultState; // Fallback to defaults if parsing fails
+				                        }
+				                    }
+				                    return defaultState;
+				                    // --- END MODIFIED STATE INITIALIZATION ---
+				                });
+				
+				                const [statusMessage, setStatusMessage] = useState('Ready to generate.');
+				                const [validationResult, setValidationResult] = useState('');
+				                const [progress, setProgress] = useState(0);
+				                const [isGenerating, setIsGenerating] = useState(false);
+				                const [outputYaml, setOutputYaml] = useState('');
+				                const [fullYaml, setFullYaml] = useState('');
+				                const [filteredYaml, setFilteredYaml] = useState('');
+				
+				                const workerRef = useRef(null);
+				                const chartRef = useRef(null);
+				
+				                const updateChart = (chartData) => {
+				                    if (!state.generateStats || !chartData) return;
+				
+				                    const { labels, data } = chartData;
+				
+				                    const container = document.getElementById('chartContainer');
+				                    if (container) {
+				                        const numBars = labels.length;
+				                        const defaultBars = 10;
+				                        if (numBars > defaultBars) {
+				                            const barWidth = 50; // pixels
+				                            container.style.width = `${numBars * barWidth}px`;
+				                        } else {
+				                            container.style.width = '100%';
+				                        }
+				                    }
+				
+				                    const ctx = document.getElementById('statsChart').getContext('2d');
+				                    if (chartRef.current) {
+				                        chartRef.current.destroy();
+				                    }
+				                    chartRef.current = new Chart(ctx, {
+				                        type: 'bar',
+				                        data: {
+				                            labels: labels,
+				                            datasets: [
+				                                {
+				                                    label: 'Legendary Part Distribution',
+				                                    data: data,
+				                                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+				                                    borderColor: 'rgba(54, 162, 235, 1)',
+				                                    borderWidth: 1,
+				                                },
+				                            ],
+				                        },
+				                        options: {
+				                            maintainAspectRatio: false,
+				                            scales: {
+				                                y: {
+				                                    beginAtZero: true,
+				                                },
+				                            },
+				                        },
+				                    });
+				                };
+				
+				                useEffect(() => {
+				                    localStorage.setItem('serialGenState', JSON.stringify(state));
+				                    if (!workerRef.current) {
+				                        workerRef.current = new Worker('generator.worker.js');
+				                    }
+				
+				                    const handleMessage = (e) => {
+				                        const { type, payload } = e.data;
+				                        switch (type) {
+				                            case 'progress':
+				                                setProgress((payload.processed / payload.total) * 100);
+				                                setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+				                                break;
+				                            case 'stats_complete':
+				                                if (state.generateStats && payload.chartData) {
+				                                    updateChart(payload.chartData);
+				                                }
+				                                break;
+				                            case 'complete':
+				                                if (payload.validationResult) {
+				                                    setValidationResult(payload.validationResult);
+				                                    setFilteredYaml(payload.validatedYaml || '');
+				                                    const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
+				                                    setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
+				                                    setOutputYaml(payload.validatedYaml || '');
+				                                    if (state.generateStats && payload.chartData) {
+				                                        updateChart(payload.chartData);
+				                                    }
+				                                } else {
+				                                    setIsGenerating(false);
+				                                    setOutputYaml(payload.truncatedYaml);
+				                                    setFullYaml(payload.yaml);
+				                                    setFilteredYaml('');
+				                                    setValidationResult('');
+				                                    setStatusMessage(`✅ Complete! ${payload.uniqueCount.toLocaleString()} unique serials generated.`);
+				                                }
+				                                break;
+				                            case 'error':
+				                                setIsGenerating(false);
+				                                setStatusMessage(`❌ ERROR: ${payload.message}`);
+				                                break;
+				                        }
+				                    };
+				
+				                    workerRef.current.onmessage = handleMessage;
+				
+				                    return () => {
+				                        if (workerRef.current) {
+				                            workerRef.current.terminate();
+				                            workerRef.current = null;
+				                        }
+				                    };
+				                }, [state]);
+				
+				                const handleInputChange = (e) => {
+				                    const { name, value, type, checked } = e.target;
+				                    // Handle checkboxes
+				                    if (type === 'checkbox') {
+				                        const [category, key] = name.split('.');
+				                        if (key) {
+				                            setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: checked } }));
+				                        } else {
+				                            setState((prev) => ({ ...prev, [name]: checked }));
+				                        }
+				                        return;
+				                    }
+				
+				                    // Handle number and text inputs
+				                    if (type === 'number' && value !== '' && isNaN(parseInt(value, 10))) {
+				                        return; // Don't update state for invalid number input
+				                    }
+				                    const val = type === 'number' && value !== '' ? parseInt(value, 10) : value;
+				                    const [category, key] = name.split('.');
+				                    if (key) {
+				                        setState((prev) => ({ ...prev, [category]: { ...prev[category], [key]: val } }));
+				                    } else {
+				                        setState((prev) => ({ ...prev, [name]: val }));
+				                    }
+				                };
+				                const handleRepoEdit = (e) =>
+				                    setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, class_mod: e.target.value } }));
+				                const handleSeedEdit = (e) => {
+				                    const newSeed = e.target.value;
+				                    setState((prev) => ({ 
+				                        ...prev, 
+				                        seed: newSeed,
+				                        rules: {
+				                            ...prev.rules,
+				                            mutableStart: newSeed.length,
+				                            mutableEnd: newSeed.length
+				                        }
+				                    }));
+				                };
+				
+				                const startGeneration = () => {
+				                    setIsGenerating(true);
+				                    setStatusMessage('Sending job...');
+				                    setProgress(0);
+				                    setValidationResult('');
+				                    setFilteredYaml('');
+				                    const config = {
+				                        seed: state.seed,
+				                        repositories: state.repositoryData,
+				                        newCount: parseInt(state.counts.new || '0', 10),
+				                        tg1Count: parseInt(state.counts.tg1 || '0', 10),
+				                        tg2Count: parseInt(state.counts.tg2 || '0', 10),
+				                        tg3Count: parseInt(state.counts.tg3 || '0', 10),
+				                        tg4Count: parseInt(state.counts.tg4 || '0', 10),
+				                        minChunkSize: parseInt(state.rules.minChunk || '0', 10),
+				                        maxChunkSize: parseInt(state.rules.maxChunk || '0', 10),
+				                        targetChunkSize: parseInt(state.rules.targetChunk || '0', 10),
+				                        targetOffset: parseInt(state.rules.targetOffset || '0', 10),
+				                        minPartSize: parseInt(state.rules.minPart || '0', 10),
+				                        maxPartSize: parseInt(state.rules.maxPart || '0', 10),
+				                        legendaryChance: parseInt(state.rules.legendaryChance || '0', 10),
+				                        mutableStart: parseInt(state.rules.mutableStart || '0', 10),
+				                        mutableEnd: parseInt(state.rules.mutableEnd || '0', 10),
+				                        gpuBatchSize: 250000,
+				                        generateStats: state.generateStats,
+				                        debugMode: state.debugMode,
+				                    };
+				                    workerRef.current.postMessage({ type: 'generate', payload: config });
+				                };
+				
+				                const resetForm = () => {
+				                    if (confirm('Are you sure you want to reset all settings to their original defaults?')) {
+				                        setState(defaultState);
+				                        setOutputYaml('');
+				                        setFullYaml('');
+				                        setFilteredYaml('');
+				                        setValidationResult('');
+				                        setStatusMessage('Settings have been reset to original defaults.');
+				                        localStorage.removeItem('serialGenState'); // Clear storage on reset
+				                    }
+				                };
+				
+				                const [copyText, setCopyText] = useState('Copy');
+				
+				                const copyToClipboard = async () => {
+				                    const contentToCopy = filteredYaml || fullYaml;
+				                    if (contentToCopy) {
+				                        await navigator.clipboard.writeText(contentToCopy);
+				                        setCopyText('Copied!');
+				                        setTimeout(() => setCopyText('Copy'), 2000);
+				                    }
+				                };
+				
+				                const downloadYAML = () => {
+				                    const hasFilteredContent = !!filteredYaml;
+				                    const contentToDownload = filteredYaml || fullYaml;
+				                    if (!contentToDownload) return;
+				                    const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
+				                    const link = document.createElement('a');
+				                    link.href = URL.createObjectURL(blob);
+				                    link.download = hasFilteredContent ? 'filtered_serials.yaml' : 'generated_serials.yaml';
+				                    link.click();
+				                    URL.revokeObjectURL(link.href);
+				                };
+				
+				                const inputClasses =
+				                    'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
+				                const btnClasses = {
+				                    primary:
+				                        'py-3 px-4 w-full font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-gray-600 disabled:cursor-not-allowed',
+				                    secondary:
+				                        'py-3 px-4 w-full font-semibold text-gray-300 bg-gray-600 rounded-md hover:bg-gray-700 transition-all disabled:opacity-50',
+				                    tertiary: 'py-2 px-4 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600 transition-all',
+				                };
+				
+				                const MutableRangeSelector = ({ seed, start, end, setRange, inputClasses }) => {
+				                    const handleRangeChange = (e) => {
+				                        const { name, value } = e.target;
+				                        let intValue = parseInt(value, 10);
+				                        if (isNaN(intValue)) intValue = name === 'start' ? start : end;
+				
+				                        let newStart = name === 'start' ? intValue : start;
+				                        let newEnd = name === 'end' ? intValue : end;
+				
+				                        if (newStart < 0) newStart = 0;
+				                        if (newEnd > seed.length) newEnd = seed.length;
+				                        if (newStart > newEnd) {
+				                            if (name === 'start') newStart = newEnd;
+				                            else newEnd = newStart;
+				                        }
+				
+				                        setRange({ start: newStart, end: newEnd });
+				                    };
+				
+				                    const protectedPrefix = seed.substring(0, start);
+				                    const mutablePart = seed.substring(start, end);
+				                    const protectedSuffix = seed.substring(end);
+				
+				                    return (
+				                        <FormGroup label="Mutable Character Range">
+				                            <div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
+				                                <span className="text-gray-500" title="Protected Prefix">
+				                                    {protectedPrefix}
+				                                </span>
+				                                <span className="bg-blue-900 text-blue-300 rounded-sm" title="Mutable Part">
+				                                    {mutablePart}
+				                                </span>
+				                                <span className="text-gray-500" title="Protected Suffix">
+				                                    {protectedSuffix}
+				                                </span>
+				                            </div>
+				                            <div className="grid grid-cols-2 gap-4">
+				                                <FormGroup label="Start Index">
+				                                    <input
+				                                        type="number"
+				                                        name="start"
+				                                        value={start}
+				                                        onChange={handleRangeChange}
+				                                        className={inputClasses}
+				                                        min="0"
+				                                        max={seed.length}
+				                                    />
+				                                </FormGroup>
+				                                <FormGroup label="End Index">
+				                                    <input
+				                                        type="number"
+				                                        name="end"
+				                                        value={end}
+				                                        onChange={handleRangeChange}
+				                                        className={inputClasses}
+				                                        min="0"
+				                                        max={seed.length}
+				                                    />
+				                                </FormGroup>
+				                            </div>
+				                        </FormGroup>
+				                    );
+				                };
+				
+				                return (
+				                    <div className="p-4 md:p-8">
+				                        <header className="text-center mb-12">
+				                            <h1 className="text-4xl md:text-5xl font-bold text-gray-100">
+				                                Serial Mutation <span className="text-blue-400">Engine</span>
+				                            </h1>
+				                            <p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
+				                        </header>
+				                        <main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-7xl mx-auto">
+				                            <div className="flex flex-col gap-4">
+				                                <Accordion title="📦 Repository & Base Seed" open={true}>
+				                                    <FormGroup label="Repository">
+				                                        <textarea
+				                                            className={`${inputClasses} min-h-[120px]`}
+				                                            value={state.repositoryData.class_mod || ''}
+				                                            onChange={handleRepoEdit}
+				                                            placeholder="Paste serials here..."
+				                                        ></textarea>
+				                                    </FormGroup>
+				                                    <FormGroup label="Base Serial Seed">
+				                                        <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit}></textarea>
+				                                    </FormGroup>
+				                                </Accordion>								<Accordion title="🧬 Mutation Rules" open={true}>
 									<MutableRangeSelector
 										seed={state.seed}
 										start={state.rules.mutableStart}
