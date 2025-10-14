@@ -543,7 +543,8 @@ uniqueCount: 0,
 		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
 		console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}"... (length: ${baseTail.length})`);
 
-		const selectedRepoTails = (config.repositories[config.itemType] || '')
+		const repository = config.repository || '';
+		const selectedRepoTails = repository
 			.split(/[\s\n]+/)
 			.filter((s) => s.startsWith('@U'))
 			.map((s) => splitHeaderTail(s)[1]);
@@ -551,7 +552,7 @@ uniqueCount: 0,
 			console.log('[DEBUG] No repository tails found, using base seed tail as parent.');
 			selectedRepoTails.push(baseTail);
 		} else {
-			console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the "${config.itemType}" repository.`);
+			console.log(`[DEBUG] Loaded ${selectedRepoTails.length} tails from the repository.`);
 		}
 
 		const highValueParts = extractHighValueParts(selectedRepoTails, config.minPartSize, config.maxPartSize);

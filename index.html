@@ -83,15 +83,7 @@
 
 			const App = () => {
 				                const defaultState = {
-				                    repositoryData: {
-				                        class_mod: '',
-				                        shield:
-				                            '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8?a%6/#5j=uN@CY8kBRxci=#U<wLv)B8u_8Xiiue#N(nEBJ4(TB}M2FZBE8;`A2prKNc7%uE5j@gEbchb=Av#2d*byt@L%0YW(IIxE2a4YvP^2OisYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjyvs6sbr>DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq_zk}DpHY(RHPymsYpdCQjv;Oq#_lmEkcosRHPymsYpdCQjv;Oq_zk}DpHY(RHPyS',
-				                        ordnance: '',
-				                        enhancement: '',
-				                        gun: '',
-				                        repkit: '',
-				                    },
+				                    repository: '',
 				                    seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
 				                    counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
 				                    rules: {
@@ -121,10 +113,6 @@
 				                            return {
 				                                ...defaultState,
 				                                ...savedState,
-				                                repositoryData: {
-				                                    ...defaultState.repositoryData,
-				                                    ...(savedState.repositoryData || {}),
-				                                },
 				                                counts: {
 				                                    ...defaultState.counts,
 				                                    ...(savedState.counts || {}),
@@ -280,7 +268,7 @@
 				                    }
 				                };
 				                const handleRepoEdit = (e) =>
-				                    setState((prev) => ({ ...prev, repositoryData: { ...prev.repositoryData, class_mod: e.target.value } }));
+				                    setState((prev) => ({ ...prev, repository: e.target.value }));
 				                const handleSeedEdit = (e) => {
 				                    const newSeed = e.target.value;
 				                    setState((prev) => ({ 
@@ -302,7 +290,7 @@
 				                    setFilteredYaml('');
 				                    const config = {
 				                        seed: state.seed,
-				                        repositories: state.repositoryData,
+				                        repository: state.repository,
 				                        newCount: parseInt(state.counts.new || '0', 10),
 				                        tg1Count: parseInt(state.counts.tg1 || '0', 10),
 				                        tg2Count: parseInt(state.counts.tg2 || '0', 10),
@@ -447,7 +435,7 @@
 				                                    <FormGroup label="Repository">
 				                                        <textarea
 				                                            className={`${inputClasses} min-h-[120px]`}
-				                                            value={state.repositoryData.class_mod || ''}
+				                                            value={state.repository || ''}
 				                                            onChange={handleRepoEdit}
 				                                            placeholder="Paste serials here..."
 				                                        ></textarea>
