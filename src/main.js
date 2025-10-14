@@ -592,6 +592,7 @@ const App = () => {
                                 <option value="CLASS_MOD">Class Mod</option>
                                 <option value="ENHANCEMENT">Enhancement</option>
                                 <option value="REPKIT">Repair Kit</option>
+                                <option value="ORDNANCE">Ordnance</option>
                                 <option value="GENERIC">Generic</option>
                             </select>
                         </FormGroup>

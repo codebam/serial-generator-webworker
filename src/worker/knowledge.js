@@ -50,6 +50,7 @@ export const ITEM_TYPE_CHAR_POOLS = {
     SHIELD: "0123456789-+*/:;=<>ABC".split(''),
     ENHANCEMENT: "!#$&()*+-@^_`{}~".split(''),
     REPKIT: "098765RPKTHL()*/=".split(''),
+    ORDNANCE: BASE85_ALPHABET.split(''), // Using generic pool as per user request
     // Generic fallback if type is unknown
     GENERIC: BASE85_ALPHABET.split(''),
 };
