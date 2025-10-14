@@ -684,6 +684,8 @@ self.onmessage = async function (e) {
 
 		                        }
 
+		                        mutatedTail = generateTargetedMutation(mutatedTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+
 		                        break;
 
 		                    case 'TG4':
