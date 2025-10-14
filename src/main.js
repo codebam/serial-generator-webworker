@@ -346,15 +346,42 @@ const App = () => {
     };
 
     const downloadYAML = () => {
-        const hasFilteredContent = !!filteredYaml;
-        const contentToDownload = filteredYaml || fullYaml;
+        const contentToDownload = outputYaml;
         if (!contentToDownload) return;
         const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = hasFilteredContent ? 'filtered_serials.yaml' : 'generated_serials.yaml';
+        link.download = 'merged_serials.yaml';
         link.click();
         URL.revokeObjectURL(link.href);
+    };
+
+    const importAndMergeYAML = (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedYamlString = e.target.result;
+                const importedYaml = jsyaml.load(importedYamlString);
+
+                const generatedSerialsYaml = jsyaml.load(fullYaml);
+
+                if (generatedSerialsYaml && generatedSerialsYaml.backpack) {
+                    importedYaml.backpack = generatedSerialsYaml.backpack;
+                }
+
+                const mergedYamlString = jsyaml.dump(importedYaml);
+                setOutputYaml(mergedYamlString);
+                setStatusMessage('YAML merged successfully. Ready to download.');
+            } catch (error) {
+                console.error('Failed to merge YAML:', error);
+                setStatusMessage('❌ ERROR: Failed to merge YAML.');
+            }
+        };
+        reader.readAsText(file);
     };
 
     const saveState = () => {
@@ -677,6 +704,10 @@ const App = () => {
                                 <button onClick={downloadYAML} className={btnClasses.tertiary}>
                                     Download
                                 </button>
+                                <label className={`${btnClasses.tertiary} text-center cursor-pointer`}>
+                                    Import & Merge
+                                    <input type="file" accept=".yaml,.yml" onChange={importAndMergeYAML} className="hidden" />
+                                </label>
                                 <button onClick={() => setOutputYaml('')} className={btnClasses.tertiary}>
                                     Clear
                                 </button>
