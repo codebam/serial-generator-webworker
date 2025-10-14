@@ -877,6 +877,9 @@ const SerialEditor = () => {
     const [binary, setBinary] = useState('');
     const [modifiedBinary, setModifiedBinary] = useState('');
     const [selection, setSelection] = useState({ start: 0, end: 0 });
+    const [level, setLevel] = useState(null);
+    const [levelFoundAt, setLevelFoundAt] = useState(null);
+
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
     const MANUFACTURER_PATTERNS = {
@@ -885,6 +888,103 @@ const SerialEditor = () => {
         'Torgue': ['2218', '2219', '221a', '221b'],
         'Daedalus': ['221c', '221d', '221e', '221f'],
         'COV': ['2220', '2221', '2222', '2223']
+    };
+
+    const standardLevelDetection = (binary) => {
+        const LEVEL_MARKER = '000000';
+        const valid_markers = [];
+        for (let i = 0; i < binary.length - 13; i++) {
+            if (binary.substring(i, i + 6) === LEVEL_MARKER) {
+                const level_bits = binary.substring(i + 6, i + 14);
+                const level_value = parseInt(level_bits, 2);
+                let decoded_level = null;
+                if (level_value === 49) {
+                    decoded_level = 1;
+                } else if (level_value === 50) {
+                    decoded_level = 50;
+                } else if (level_value >= 1 && level_value <= 50) {
+                    decoded_level = level_value;
+                } else if (level_value >= 49 && level_value <= 98) {
+                    const actual_level = level_value - 48;
+                    if (actual_level >= 1 && actual_level <= 50) {
+                        decoded_level = actual_level;
+                    }
+                }
+
+                if (decoded_level !== null) {
+                    valid_markers.push([i, decoded_level, level_value]);
+                }
+            }
+        }
+
+        const level_50_markers = valid_markers.filter(m => m[1] === 50);
+        if (level_50_markers.length > 0) return [50, level_50_markers[0][0]];
+
+        const level_49_markers = valid_markers.filter(m => m[1] === 49);
+        if (level_49_markers.length > 0) return [49, level_49_markers[0][0]];
+
+        if (valid_markers.length > 0) return [valid_markers[0][1], valid_markers[0][0]];
+
+        return ['Unknown', -1];
+    };
+
+    const enhancedLevelDetection = (binary) => {
+        const all_candidates = [];
+
+        for (let level = 0; level <= 50; level++) {
+            const pattern = level.toString(2).padStart(8, '0');
+            for (let i = 0; i < binary.length - 7; i++) {
+                if (binary.substring(i, i + 8) === pattern) {
+                    const score = 100 - Math.floor(i / 10);
+                    all_candidates.push([level, i, score, 'direct']);
+                }
+            }
+        }
+
+        for (let level = 0; level <= 50; level++) {
+            const offset_value = level + 48;
+            const pattern = offset_value.toString(2).padStart(8, '0');
+            for (let i = 0; i < binary.length - 7; i++) {
+                if (binary.substring(i, i + 8) === pattern) {
+                    const score = 90 - Math.floor(i / 10);
+                    all_candidates.push([level, i, score, 'offset']);
+                }
+            }
+        }
+
+        all_candidates.sort((a, b) => b[2] - a[2]);
+
+        const level_50_candidates = all_candidates.filter(c => c[0] === 50);
+        if (level_50_candidates.length > 0) return [50, level_50_candidates[0][1]];
+
+        const level_49_candidates = all_candidates.filter(c => c[0] === 49);
+        if (level_49_candidates.length > 0) return [49, level_49_candidates[0][1]];
+        
+        const level_0_candidates = all_candidates.filter(c => c[0] === 0);
+        if (level_0_candidates.length > 0 && level_0_candidates[0][2] >= 20) return [0, level_0_candidates[0][1]];
+
+        const level_10_candidates = all_candidates.filter(c => c[0] === 10);
+        if (level_10_candidates.length >= 3) return [10, level_10_candidates[0][1]];
+
+        if (all_candidates.length > 0) return [all_candidates[0][0], all_candidates[0][1]];
+
+        return ['Unknown', -1];
+    };
+
+    const detectItemLevel = (binary) => {
+        const [standard_result, standard_pos] = standardLevelDetection(binary);
+
+        if (standard_result === 50) return [50, standard_pos];
+        if (standard_result === 49) return [49, standard_pos];
+
+        const [enhanced_result, enhanced_pos] = enhancedLevelDetection(binary);
+
+        if (enhanced_result === 50) return [50, enhanced_pos];
+        if (enhanced_result === 49) return [49, enhanced_pos];
+
+        if (standard_result !== 'Unknown') return [standard_result, standard_pos];
+
+        return [enhanced_result, enhanced_pos];
     };
 
     const decodeSerial = () => {
@@ -969,13 +1069,63 @@ const SerialEditor = () => {
         const safeEndBits = binary_string.length - 24;
         setSelection({ start: safeStartBits, end: safeEndBits });
 
+        const [detectedLevel, levelPos] = detectItemLevel(binary_string);
+        setLevel(detectedLevel);
+        setLevelFoundAt(levelPos);
+
         setAnalysis({
             type: serialType,
             manufacturer: manufacturer,
             hex: hex_data,
             safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
+            level: detectedLevel,
         });
+    };
+
+    const handleLevelChange = (e) => {
+        const newLevel = parseInt(e.target.value, 10);
+        if (isNaN(newLevel) || newLevel < 0 || newLevel > 50) {
+            return;
+        }
+        setLevel(newLevel);
+
+        if (analysis && analysis.level !== 'Unknown' && levelFoundAt !== -1) {
+            let newLevelValue;
+            if (newLevel === 1) {
+                newLevelValue = 49;
+            } else if (newLevel === 50) {
+                newLevelValue = 50;
+            } else {
+                newLevelValue = newLevel;
+            }
+
+            const levelPattern = newLevelValue.toString(2).padStart(8, '0');
+            
+            let startPos = -1;
+            if (analysis.type === 'TYPE A') {
+                startPos = 10; // As per KNOWLEDGE.md for varint5, but we are using 8bit for now.
+            } else if (analysis.type === 'TYPE B') {
+                startPos = 15; // As per KNOWLEDGE.md
+            }
+
+            // Fallback to detected position if type-based position is not helpful
+            if(levelFoundAt !== -1) {
+                // if standard marker was found, the level bits start after the 6-bit marker
+                const LEVEL_MARKER = '000000';
+                if(modifiedBinary.substring(levelFoundAt, levelFoundAt + 6) === LEVEL_MARKER) {
+                    startPos = levelFoundAt + 6;
+                } else {
+                    startPos = levelFoundAt;
+                }
+            }
+
+            if (startPos !== -1) {
+                const prefix = modifiedBinary.substring(0, startPos);
+                const suffix = modifiedBinary.substring(startPos + 8);
+                setModifiedBinary(prefix + levelPattern + suffix);
+            }
+        }
     };
 
     const handleSelectionChange = (e) => {
@@ -1017,7 +1167,9 @@ const SerialEditor = () => {
     const encodeSerial = () => {
         const bytes = [];
         for (let i = 0; i < modifiedBinary.length; i += 8) {
-            bytes.push(parseInt(modifiedBinary.substring(i, i + 8), 2));
+            const byteString = modifiedBinary.substring(i, i + 8);
+            if (byteString.length < 8) continue;
+            bytes.push(parseInt(byteString, 2));
         }
 
         const unmirrored_bytes = bytes.map(byte => {
@@ -1031,15 +1183,11 @@ const SerialEditor = () => {
         });
 
         let encoded = '';
-        for (let i = 0; i < unmirrored_bytes.length; i += 4) {
-            let chunk = unmirrored_bytes.slice(i, i + 4);
-            let value = 0;
-            if (chunk.length < 4) {
-                while (chunk.length < 4) {
-                    chunk.push(0);
-                }
-            }
-            value = (chunk[0] << 24) | (chunk[1] << 16) | (chunk[2] << 8) | chunk[3];
+        const num_full_chunks = Math.floor(unmirrored_bytes.length / 4);
+
+        for (let i = 0; i < num_full_chunks; i++) {
+            const chunk = unmirrored_bytes.slice(i * 4, i * 4 + 4);
+            let value = ((chunk[0] << 24) | (chunk[1] << 16) | (chunk[2] << 8) | chunk[3]) >>> 0;
 
             let block = '';
             for (let j = 0; j < 5; j++) {
@@ -1049,16 +1197,23 @@ const SerialEditor = () => {
             encoded += block;
         }
 
-        const originalPaddedLen = (Math.ceil(unmirrored_bytes.length / 4) * 5);
-        const finalEncoded = encoded.substring(0, originalPaddedLen);
+        const last_chunk_bytes = unmirrored_bytes.slice(num_full_chunks * 4);
+        if (last_chunk_bytes.length > 0) {
+            const padding_size = 4 - last_chunk_bytes.length;
+            while (last_chunk_bytes.length < 4) {
+                last_chunk_bytes.push(0);
+            }
+            let value = ((last_chunk_bytes[0] << 24) | (last_chunk_bytes[1] << 16) | (last_chunk_bytes[2] << 8) | last_chunk_bytes[3]) >>> 0;
 
-        const originalLenMod5 = serial.substring(2).length % 5;
-        let finalSerial = '@U' + finalEncoded;
-        while ((finalSerial.length - 2) % 5 !== originalLenMod5 && finalSerial.length > 2) {
-            finalSerial = finalSerial.slice(0, -1);
+            let block = '';
+            for (let j = 0; j < 5; j++) {
+                block = BASE85_ALPHABET[value % 85] + block;
+                value = Math.floor(value / 85);
+            }
+            encoded += block.substring(0, 5 - padding_size);
         }
         
-        setNewSerial(finalSerial);
+        setNewSerial('@U' + encoded);
     };
 
     const inputClasses = 'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
@@ -1083,9 +1238,16 @@ const SerialEditor = () => {
                     <h3 className="text-lg font-semibold">Analysis Results</h3>
                     <p><strong>Type:</strong> {analysis.type}</p>
                     <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
+                    <p><strong>Level:</strong> {analysis.level}</p>
                     <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">{analysis.hex}</span></p>
                     <p><strong>Safe Edit Start (after u~Q):</strong> {analysis.safeEditStart}</p>
                     <p><strong>Safe Edit End (preserve trailer):</strong> {analysis.safeEditEnd}</p>
+                    
+                    <h3 className="text-lg font-semibold mt-2">Level Editor</h3>
+                    <FormGroup label="Item Level (0-50)">
+                        <input type="number" value={level} onChange={handleLevelChange} className={inputClasses} min="0" max="50" />
+                    </FormGroup>
+
                     <h3 className="text-lg font-semibold mt-2">Binary Data Editor</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <FormGroup label="Start Index">
