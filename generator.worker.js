@@ -687,9 +687,20 @@ self.onmessage = async function (e) {
 		                        break;
 
 		                    case 'TG4':
-
 		                        mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-
+		                        if (adjustedMutableStart === adjustedMutableEnd && getNextRandom() < legendaryStackingChance && highValueParts.length > 0) {
+		                            if(debugMode) console.log('[DEBUG] > TG4 Legendary Stacking Triggered!');
+		                            const part = randomChoice(highValueParts).slice();
+		                            const availableMutableSpace = dynamicTargetLength - protectedStartLength;
+		                            if (availableMutableSpace >= part.length) {
+		                                const numRepeats = Math.floor(availableMutableSpace / part.length);
+		                                if (numRepeats > 0) {
+		                                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
+		                                    mutatedTail = mutatedTail.substring(0, dynamicTargetLength - repeatedBlock.length) + repeatedBlock;
+		                                    if(debugMode) console.log(`[DEBUG]   > Stacked part "${part}" ${numRepeats} times.`);
+		                                }
+		                            }
+		                        }
 		                        break;
 
 		                    default:
