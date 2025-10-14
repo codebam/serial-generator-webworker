@@ -1,12 +1,6 @@
 import { ALPHABET } from './constants.js';
 
-interface FilterSerialsResult {
-    validationResult: string;
-    validatedYaml: string;
-    validatedSerials?: string[];
-}
-
-export function filterSerials(yaml: string, seed: string, validationChars: number): FilterSerialsResult {
+export function filterSerials(yaml, seed, validationChars) {
     console.log(`[DEBUG] Starting filtering process with seed "${seed}" and ${validationChars} validation characters.`);
 	if (!yaml)
 		return {

@@ -20,7 +20,7 @@ import {
  * @param {string} itemType - The type of item being generated (e.g., 'GUN').
  * @returns {string} A new, mutated tail.
  */
-export function generateKnowledgeBasedMutation(baseTail: string, originalSerial: string, finalLength: number, itemType: string, charPool: string[] | null = null): string {
+export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, charPool = null) {
     if (self.debugMode) console.log(`[DEBUG] > Knowledge-Based Mutation | finalLength: ${finalLength}`);
 
     const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
@@ -78,7 +78,7 @@ export function generateKnowledgeBasedMutation(baseTail: string, originalSerial:
 // --- REFACTORED MUTATION ALGORITHMS (Intensity Ladder) ---
 
 // NEW: Append-Only
-export function generateAppendMutation(baseTail: string, finalLength: number, protectedStartLength: number, itemType: string = 'GENERIC'): string {
+export function generateAppendMutation(baseTail, finalLength, protectedStartLength, itemType = 'GENERIC') {
     if (self.debugMode) console.log(`[DEBUG] > Append Mutation | finalLength: ${finalLength}, protected: ${protectedStartLength}, itemType: ${itemType}`);
     const startPart = baseTail.substring(0, protectedStartLength);
     const paddingLength = finalLength - startPart.length;
@@ -95,7 +95,7 @@ export function generateAppendMutation(baseTail: string, finalLength: number, pr
 }
 
 // TG1: Targeted Character Flip (Low Intensity)
-export function generateCharacterFlipMutation(baseTail: string, originalSerial: string, finalLength: number, itemType: string = 'GENERIC'): string {
+export function generateCharacterFlipMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
     if (self.debugMode) console.log(`[DEBUG] > TG1: Knowledge-Based Mutation (Mixed Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
     const itemCharPool = getCharPoolForItemType(itemType);
     const fullCharPool = ALPHABET.split('');
@@ -104,14 +104,14 @@ export function generateCharacterFlipMutation(baseTail: string, originalSerial: 
 }
 
 // TG2: Segment Reversal (Medium Intensity)
-export function generateSegmentReversalMutation(baseTail: string, originalSerial: string, finalLength: number, itemType: string = 'GENERIC'): string {
+export function generateSegmentReversalMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
     if (self.debugMode) console.log(`[DEBUG] > TG2: Knowledge-Based Mutation (Item Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
     const itemCharPool = getCharPoolForItemType(itemType);
     return generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, itemCharPool);
 }
 
 // TG3: High-Value Part Manipulation (High Intensity)
-export function generatePartManipulationMutation(baseTail: string, parentTail: string, highValueParts: string[], legendaryChance: number, mutableStart: number, mutableEnd: number, finalLength: number): string {
+export function generatePartManipulationMutation(baseTail, parentTail, highValueParts, legendaryChance, mutableStart, mutableEnd, finalLength) {
     if (self.debugMode) console.log(`[DEBUG] > TG3: Part Manipulation | range: ${mutableStart}-${mutableEnd}`);
 
     // Behavior 2: Part Stacking (if no mutable range)
@@ -160,7 +160,7 @@ export function generatePartManipulationMutation(baseTail: string, parentTail: s
 }
 
 // TG4: Repository Crossover (Very High Intensity)
-export function generateRepositoryCrossoverMutation(baseTail: string, parentTail: string, mutableStart: number, mutableEnd: number): string {
+export function generateRepositoryCrossoverMutation(baseTail, parentTail, mutableStart, mutableEnd) {
     if (self.debugMode) console.log(`[DEBUG] > TG4: Repository Crossover | range: ${mutableStart}-${mutableEnd}`);
     const prefix = baseTail.substring(0, mutableStart);
     const crossoverLength = mutableEnd - mutableStart;

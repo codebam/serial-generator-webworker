@@ -1,15 +1,15 @@
 // --- GPU & RANDOMNESS STATE ---
-let gpuDevice: GPUDevice | null = null;
+let gpuDevice = null;
 
 export const getGpuDevice = () => gpuDevice;
-let randomBuffer: Float32Array = new Float32Array(0);
-let randomIndex: number = 0;
+let randomBuffer = new Float32Array(0);
+let randomIndex = 0;
 
-export function needsRandomNumberGeneration(margin: number): boolean {
+export function needsRandomNumberGeneration(margin) {
     return randomIndex >= randomBuffer.length - margin;
 }
 
-export function getNextRandom(): number {
+export function getNextRandom() {
 	if (randomIndex >= randomBuffer.length) {
 		console.warn('Random buffer depleted. Consider increasing gpuBatchSize.');
 		randomIndex = 0; // Reset to avoid crashing, but this is not ideal
@@ -18,7 +18,7 @@ export function getNextRandom(): number {
 }
 
 // --- WebGPU & UTILITY FUNCTIONS ---
-export async function setupWebGPU(): Promise<GPUDevice | null> {
+export async function setupWebGPU() {
     console.log('[DEBUG] Attempting to set up WebGPU...');
 	if (typeof navigator === 'undefined' || !navigator.gpu) {
 		console.warn('WebGPU not supported. Falling back to crypto.getRandomValues.');
@@ -40,7 +40,7 @@ export async function setupWebGPU(): Promise<GPUDevice | null> {
 		return null;
 	}
 }
-export async function generateRandomNumbersOnGPU(count: number): Promise<void> {
+export async function generateRandomNumbersOnGPU(count) {
 	if (!gpuDevice) {
 		console.log(`[DEBUG] Generating ${count} random numbers using CPU (crypto.getRandomValues).`);
 		randomBuffer = new Float32Array(count);
