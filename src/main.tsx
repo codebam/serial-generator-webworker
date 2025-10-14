@@ -88,6 +88,8 @@ const App = () => {
     const [baseYaml, setBaseYaml] = useState<string>('');
     const [isMerging, setIsMerging] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
+    const workerRef = useRef(null);
+    const chartRef = useRef(null);
     const searchSerials = async () => {
         if (!searchTerm) return;
         setStatusMessage('Searching...');
