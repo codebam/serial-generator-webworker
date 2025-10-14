@@ -1,5 +1,42 @@
 const { useState, useEffect, useRef } = React;
 
+const Dropdown = ({ title, children, btnClasses }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative inline-block text-left" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={btnClasses}
+            >
+                {title}
+                <svg className="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+            </button>
+            {isOpen && (
+                <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 z-10">
+                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                        {children}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 
 const Accordion = ({ title, children, open = false, className = '', noPadding = false }) => (
     <details open={open} className={`bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden flex flex-col ${className}`}>
@@ -752,26 +789,39 @@ const App = () => {
                         </div>
                     </Accordion>
                     <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
-                        <div className="p-4 flex justify-between items-center border-b border-gray-700">
-                            <h3 className="text-lg font-semibold">📝 YAML Output (Read-Only)</h3>
-                            <div className="flex gap-2">
+                        <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-wrap">
+                            <h3 className="text-lg font-semibold mb-2 md:mb-0">📝 YAML Output (Read-Only)</h3>
+                            <div className="flex gap-2 flex-wrap">
                                 <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
                                     {copyText}
                                 </button>
                                 <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
                                     Download
                                 </button>
-                                <button onClick={() => mergeYAML(baseYaml)} className={btnClasses.tertiary} disabled={!baseYaml || isMerging}>
-                                    Import & Merge
-                                </button>
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" id="liveMerge" checked={liveMerge} onChange={(e) => setLiveMerge(e.target.checked)} disabled={!baseYaml || isMerging} />
-                                    <label htmlFor="liveMerge">Live Merge</label>
-                                    <label className={`${btnClasses.tertiary} text-center cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <Dropdown title="Merge" btnClasses={btnClasses.tertiary}>
+                                    <button
+                                        onClick={() => mergeYAML(baseYaml)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                                        disabled={!baseYaml || isMerging}
+                                    >
+                                        Import & Merge
+                                    </button>
+                                    <label className={`block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                         Select Base YAML
                                         <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
                                     </label>
-                                </div>
+                                    <div className="flex items-center px-4 py-2 text-sm text-gray-300">
+                                        <input
+                                            type="checkbox"
+                                            id="liveMerge"
+                                            checked={liveMerge}
+                                            onChange={(e) => setLiveMerge(e.target.checked)}
+                                            disabled={!baseYaml || isMerging}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor="liveMerge">Live Merge</label>
+                                    </div>
+                                </Dropdown>
                                 <button onClick={() => setOutputYaml('')} className={btnClasses.tertiary} disabled={isMerging}>
                                     Clear
                                 </button>
