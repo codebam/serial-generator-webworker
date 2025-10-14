@@ -338,7 +338,7 @@ function divideTailIntoParts(tail, num_parts) {
 	return parts;
 }
 function generateTargetedMutation(baseTail, item_type, mutableStart, mutableEnd) {
-    if (debugMode) console.log(`[DEBUG] > TG4 Targeted Mutation | item_type: ${item_type}, start: ${mutableStart}, end: ${mutableEnd}`);
+    if (debugMode) console.log(`[DEBUG] > Targeted Mutation | item_type: ${item_type}, start: ${mutableStart}, end: ${mutableEnd}`);
 
     // If start and end are the same, it's append-only mode, no mutation.
     if (mutableStart === mutableEnd) {
@@ -515,6 +515,7 @@ self.onmessage = async function (e) {
 		}
 		await generateRandomNumbersOnGPU(config.gpuBatchSize);
 		const [baseHeader, baseTail] = splitHeaderTail(config.seed || DEFAULT_SEED);
+        let newBaseTail = baseTail;
         console.log(`[DEBUG] Seed parsed into Header: "${baseHeader}" and Tail: "${baseTail.substring(0, 20)}..." (length: ${baseTail.length})`);
 
 		const selectedRepoTails = (config.repositories[config.itemType] || '')
@@ -572,6 +573,7 @@ self.onmessage = async function (e) {
 					let serial = '';
 
 					let innerAttempts = 0;
+                    let mutatedTail;
 
 		
 
@@ -591,18 +593,19 @@ self.onmessage = async function (e) {
 
 		
 
-						let mutatedTail;
+						
 
 		
 
 						switch (item.tg) {
 
-		                    case 'NEW':
-
-		                        mutatedTail = generateTargetedMutation(baseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
-
-		                        break;
-
+		                                            		                    case 'NEW':
+		                                            		                        if (adjustedMutableStart === 0 && adjustedMutableEnd === 0) {
+		                                            		                            mutatedTail = generateAppendMutation(newBaseTail, dynamicTargetLength, protectedStartLength);
+		                                            		                        } else {
+		                                            		                            mutatedTail = generateTargetedMutation(newBaseTail, config.itemType, adjustedMutableStart, adjustedMutableEnd);
+		                                            		                        }
+		                                            		                        break;
 		                    case 'TG1':
 
 		                    case 'TG2':
@@ -706,6 +709,9 @@ self.onmessage = async function (e) {
 					} while (seenSerials.has(serial) && innerAttempts < 20);
 
 			if (!seenSerials.has(serial)) {
+                if (item.tg === 'NEW') {
+                    newBaseTail = mutatedTail;
+                }
 				seenSerials.add(serial);
 				const flagValue = TG_FLAGS[item.tg] || 0;
 				generatedSerials.push({
