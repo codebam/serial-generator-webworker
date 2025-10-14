@@ -1236,11 +1236,12 @@ const SerialEditor = () => {
     };
 
     const [newSerial, setNewSerial] = useState('');
+    const [modifiedBase85, setModifiedBase85] = useState('');
 
-    const encodeSerial = () => {
+    const encodeSerial = (binaryData) => {
         const bytes = [];
-        for (let i = 0; i < modifiedBinary.length; i += 8) {
-            const byteString = modifiedBinary.substring(i, i + 8);
+        for (let i = 0; i < binaryData.length; i += 8) {
+            const byteString = binaryData.substring(i, i + 8);
             if (byteString.length < 8) continue;
             bytes.push(parseInt(byteString, 2));
         }
@@ -1286,8 +1287,15 @@ const SerialEditor = () => {
             encoded += block.substring(0, 5 - padding_size);
         }
         
-        setNewSerial('@U' + encoded);
+        return '@U' + encoded;
     };
+
+    useEffect(() => {
+        if (modifiedBinary) {
+            const newBase85 = encodeSerial(modifiedBinary);
+            setModifiedBase85(newBase85);
+        }
+    }, [modifiedBinary]);
 
     const inputClasses = 'w-full p-3 bg-gray-900 text-gray-200 border border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm';
     const btnClasses = {
@@ -1342,11 +1350,10 @@ const SerialEditor = () => {
                         <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
                         <span>{modifiedBinary.substring(selection.end)}</span>
                     </div>
-                    <button onClick={encodeSerial} className={`${btnClasses.primary} mt-4`}>Generate Serial</button>
-                    {newSerial && (
+                    {modifiedBase85 && (
                         <div className="mt-4">
-                            <h3 className="text-lg font-semibold">New Serial</h3>
-                            <textarea className={`${inputClasses} h-24`} readOnly value={newSerial}></textarea>
+                            <h3 className="text-lg font-semibold">Modified Base85 Data</h3>
+                            <textarea className={`${inputClasses} h-24`} readOnly value={modifiedBase85}></textarea>
                         </div>
                     )}
                 </div>
