@@ -26,7 +26,11 @@ self.onmessage = async function (e) {
 		const validationData = filterSerials(payload.yaml, payload.seed, payload.validationChars);
 		let chartData = null;
 		if (payload.generateStats && validationData.validatedSerials && validationData.validatedSerials.length > 0) {
-			const highValueParts = calculateHighValuePartsStats(validationData.validatedSerials, payload.minPart, payload.maxPart);
+			self.postMessage({ type: 'progress', payload: { processed: 0, total: 100, stage: 'stats' } });
+			const onProgress = (progress) => {
+				self.postMessage({ type: 'progress', payload: { processed: progress, total: 100, stage: 'stats' } });
+			};
+			const highValueParts = calculateHighValuePartsStats(validationData.validatedSerials, payload.minPart, payload.maxPart, onProgress);
 			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
 			const maxBars = 200;
 			if (sortedParts.length > maxBars) {
@@ -212,8 +216,12 @@ uniqueCount: generatedSerials.length,
 		// 2. If stats are enabled, calculate and send them in a separate message
 		if (config.generateStats && generatedSerials.length > 0) {
 			console.log('[DEBUG] Calculating and sending statistics.');
+			self.postMessage({ type: 'progress', payload: { processed: 0, total: 100, stage: 'stats' } });
+			const onProgress = (progress) => {
+				self.postMessage({ type: 'progress', payload: { processed: progress, total: 100, stage: 'stats' } });
+			};
 			const serialStrings = generatedSerials.map((s) => s.serial);
-			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize);
+			const highValueParts = calculateHighValuePartsStats(serialStrings, config.minPartSize, config.maxPartSize, onProgress);
 			let sortedParts = highValueParts.sort((a, b) => b[1] - a[1]);
 			const maxBars = 200;
 			if (sortedParts.length > maxBars) {

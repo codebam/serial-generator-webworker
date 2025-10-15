@@ -1,5 +1,7 @@
 import { HEADER_RE } from './constants.js';
 
+const STAT_SERIAL_LIMIT = 5000; // Limit the number of serials for stats calculation
+
 // --- STATS FUNCTIONS (MOVED FROM UI) ---
 export function getSerialTail(serial) {
 	const match = serial.match(HEADER_RE);
@@ -9,9 +11,12 @@ export function getSerialTail(serial) {
 	return serial.substring(10);
 }
 
-export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) {
+export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize, onProgress) {
+    if (onProgress) onProgress(0); // Reset progress
 	const frequencyMap = new Map();
-	const tails = serials.map(getSerialTail).filter((t) => t);
+    const limitedSerials = serials.slice(0, STAT_SERIAL_LIMIT);
+	const tails = limitedSerials.map(getSerialTail).filter((t) => t);
+    const totalSteps = maxPartSize - minPartSize + 1;
 
 	// 1. Find all repeating substrings
 	for (let size = minPartSize; size <= maxPartSize; size++) {
@@ -22,6 +27,10 @@ export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) 
 				frequencyMap.set(fragment, (frequencyMap.get(fragment) || 0) + 1);
 			}
 		}
+        if (onProgress) {
+            const progress = ((size - minPartSize + 1) / totalSteps) * 100;
+            onProgress(progress);
+        }
 	}
 
 	let parts = [...frequencyMap.entries()].filter(([, count]) => count > 1).map(([part]) => part);
@@ -57,6 +66,8 @@ export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize) 
 	for (const part of parts) {
 		finalParts.set(part, frequencyMap.get(part));
 	}
+
+    if (onProgress) onProgress(100); // Final progress update
 
 	return [...finalParts.entries()];
 }
