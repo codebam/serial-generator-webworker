@@ -131,10 +131,10 @@ uniqueCount: 0,
                         mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, adjustedMutableStart, config.itemType);
                         break;
                     case 'NEW_V1':
-                        mutatedTail = generateStackedPartMutationV1(baseTail, highValueParts, dynamicTargetLength, config.itemType);
+                        mutatedTail = generateStackedPartMutationV1(baseTail, config.minPartSize, config.maxPartSize, dynamicTargetLength, config.itemType);
                         break;
                     case 'NEW_V2':
-                        mutatedTail = generateStackedPartMutationV2(baseTail, highValueParts, dynamicTargetLength, config.itemType);
+                        mutatedTail = generateStackedPartMutationV2(baseTail, config.minPartSize, config.maxPartSize, dynamicTargetLength, config.itemType);
                         break;
 					case 'TG1':
 						mutatedTail = generateCharacterFlipMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);

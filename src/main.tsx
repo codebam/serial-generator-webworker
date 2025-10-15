@@ -492,7 +492,7 @@ const App = () => {
 																				className={inputClasses}
 																				disabled={isMerging}
 																			/>
-																			<p className="text-xs text-gray-400">Injects at least two high-value parts (full alphabet).</p>
+																			<p className="text-xs text-gray-400">Injects two randomly generated repeating parts (full alphabet).</p>
 										</FormGroup>
 										<FormGroup label="NEW (v2)">
 																			<input
@@ -503,7 +503,7 @@ const App = () => {
 																				className={inputClasses}
 																				disabled={isMerging}
 																			/>
-																			<p className="text-xs text-gray-400">Injects at least two high-value parts (restricted alphabet).</p>
+																			<p className="text-xs text-gray-400">Injects two randomly generated repeating parts (restricted alphabet).</p>
 										</FormGroup>
             							<FormGroup label="TG1">
             								                                <input

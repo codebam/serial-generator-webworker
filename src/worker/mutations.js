@@ -74,26 +74,41 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     return finalMutatedTail;
 }
 
-// --- NEW (v1) STACKED PART MUTATION (Full Alphabet) ---
-export function generateStackedPartMutationV1(baseTail, highValueParts, finalLength, itemType) {
-    if (self.debugMode) console.log(`[DEBUG] > NEW (v1) Stacked Part Mutation | finalLength: ${finalLength}`);
+function createRandomRepeatingPart(minPartSize, maxPartSize, charPool) {
+    const totalLength = randomInt(minPartSize, maxPartSize);
+    // Ensure base length is at least 1 and allows for at least 2 repeats.
+    const maxBaseLength = Math.max(1, Math.floor(totalLength / 2));
+    const baseLength = randomInt(1, maxBaseLength);
 
-    if (!highValueParts || highValueParts.length < 2) {
-        if (self.debugMode) console.warn(`[DEBUG]   > Not enough high-value parts available. Falling back to knowledge-based mutation.`);
-        return generateKnowledgeBasedMutation(baseTail, baseTail, finalLength, itemType);
+    let basePart = '';
+    for (let i = 0; i < baseLength; i++) {
+        basePart += randomChoice(charPool);
     }
+
+    let repeatedPart = '';
+    while (repeatedPart.length < totalLength) {
+        repeatedPart += basePart;
+    }
+
+    return repeatedPart.substring(0, totalLength);
+}
+
+// --- NEW (v1) STACKED PART MUTATION (Full Alphabet) ---
+export function generateStackedPartMutationV1(baseTail, minPartSize, maxPartSize, finalLength, itemType) {
+    if (self.debugMode) console.log(`[DEBUG] > NEW (v1) Stacked Part Mutation | finalLength: ${finalLength}`);
 
     const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
     const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
     
     let mutatedTail = baseTail;
+    const charPool = BASE85_ALPHABET.split(''); // Use full alphabet
 
-    // Inject 2 high-value parts
+    // Inject 2 self-repeating random parts
     for (let i = 0; i < 2; i++) {
         const currentSafeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
         if (safeStart >= currentSafeEnd) break; // Stop if no safe space is left
 
-        const part = randomChoice(highValueParts);
+        const part = createRandomRepeatingPart(minPartSize, maxPartSize, charPool);
         const injectPosition = randomInt(safeStart, currentSafeEnd);
         mutatedTail = mutatedTail.slice(0, injectPosition) + part + mutatedTail.slice(injectPosition);
     }
@@ -104,7 +119,6 @@ export function generateStackedPartMutationV1(baseTail, highValueParts, finalLen
         finalMutatedTail = finalMutatedTail.substring(0, finalLength);
     } else if (finalMutatedTail.length < finalLength) {
         const paddingLength = finalLength - finalMutatedTail.length;
-        const charPool = BASE85_ALPHABET.split(''); // Use full alphabet
         let padding = '';
         for (let i = 0; i < paddingLength; i++) {
             padding += randomChoice(charPool);
@@ -117,25 +131,21 @@ export function generateStackedPartMutationV1(baseTail, highValueParts, finalLen
 }
 
 // --- NEW (v2) STACKED PART MUTATION (Restricted Alphabet) ---
-export function generateStackedPartMutationV2(baseTail, highValueParts, finalLength, itemType) {
+export function generateStackedPartMutationV2(baseTail, minPartSize, maxPartSize, finalLength, itemType) {
     if (self.debugMode) console.log(`[DEBUG] > NEW (v2) Stacked Part Mutation | finalLength: ${finalLength}`);
-
-    if (!highValueParts || highValueParts.length < 2) {
-        if (self.debugMode) console.warn(`[DEBUG]   > Not enough high-value parts available. Falling back to knowledge-based mutation.`);
-        return generateKnowledgeBasedMutation(baseTail, baseTail, finalLength, itemType);
-    }
 
     const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
     const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
     
     let mutatedTail = baseTail;
+    const charPool = getCharPoolForItemType(itemType); // Use item-specific alphabet
 
-    // Inject 2 high-value parts
+    // Inject 2 self-repeating random parts
     for (let i = 0; i < 2; i++) {
         const currentSafeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
         if (safeStart >= currentSafeEnd) break; // Stop if no safe space is left
 
-        const part = randomChoice(highValueParts);
+        const part = createRandomRepeatingPart(minPartSize, maxPartSize, charPool);
         const injectPosition = randomInt(safeStart, currentSafeEnd);
         mutatedTail = mutatedTail.slice(0, injectPosition) + part + mutatedTail.slice(injectPosition);
     }
@@ -146,7 +156,6 @@ export function generateStackedPartMutationV2(baseTail, highValueParts, finalLen
         finalMutatedTail = finalMutatedTail.substring(0, finalLength);
     } else if (finalMutatedTail.length < finalLength) {
         const paddingLength = finalLength - finalMutatedTail.length;
-        const charPool = getCharPoolForItemType(itemType); // Use item-specific alphabet
         let padding = '';
         for (let i = 0; i < paddingLength; i++) {
             padding += randomChoice(charPool);
