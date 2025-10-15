@@ -45,20 +45,22 @@ export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize, 
 
 	// 3. Find frequent substrings using the LCP array
 	for (let i = 0; i < suffixArray.length; i++) {
+		let minLCP = Infinity;
 		for (let j = i + 1; j < suffixArray.length; j++) {
-			const commonPrefixLength = Math.min(...lcpArray.slice(i + 1, j + 1));
-			if (commonPrefixLength >= minPartSize) {
-				const substring = text.substring(suffixArray[i], suffixArray[i] + commonPrefixLength);
-				for (let k = minPartSize; k <= Math.min(maxPartSize, substring.length); k++) {
-					const part = substring.substring(0, k);
-					frequencyMap.set(part, (frequencyMap.get(part) || 0) + 1);
-				}
-			} else {
-				break; // Optimization: LCP will only decrease from here
-			}
-		}
+			minLCP = Math.min(minLCP, lcpArray[j]);
+			const commonPrefixLength = minLCP;
+							if (commonPrefixLength >= minPartSize) {
+								const substring = text.substring(suffixArray[i], suffixArray[i] + commonPrefixLength);
+								const groupSize = j - i + 1;
+								for (let k = minPartSize; k <= Math.min(maxPartSize, substring.length); k++) {
+									const part = substring.substring(0, k);
+									frequencyMap.set(part, (frequencyMap.get(part) || 0) + groupSize);
+								}
+							} else {
+								break; // Optimization: LCP will only decrease from here
+							}		}
 		if (onProgress) {
-			onProgress((i / suffixArray.length) * 100);
+			onProgress(((i + 1) / suffixArray.length) * 100);
 		}
 	}
 
