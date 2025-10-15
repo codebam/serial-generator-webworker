@@ -488,7 +488,7 @@ const App = () => {
             																	className={inputClasses}
             																	disabled={isMerging}
             																/>
-            								                                                                <p className="text-xs text-gray-400">Knowledge-based mutation using a mix of the item's character set and the full character set.</p>
+            								                                                                <p className="text-xs text-gray-400">Inserts one stable motif at a random position within the serial's safe zone.</p>
             																															</FormGroup>
             																															<FormGroup label="TG2">
             																																<input
@@ -499,7 +499,7 @@ const App = () => {
             																																	className={inputClasses}
             																																	disabled={isMerging}
             																																/>
-            																																<p className="text-xs text-gray-400">Knowledge-based mutation using only the item's character set.</p>															</FormGroup>
+            																																<p className="text-xs text-gray-400">Inserts two stable motifs at random positions within the serial's safe zone.</p>															</FormGroup>
             															<FormGroup label="TG3">
             																<input
             																	type="number"
