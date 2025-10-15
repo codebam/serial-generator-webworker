@@ -660,6 +660,56 @@ const App = () => {
                                 <SerialEditor />
                             </div>
                             <div className="flex flex-col gap-4 h-full xl:col-span-2 2xl:col-span-1">
+                                <Accordion title="📊 Statistics" open={true}>
+                                    <div className="overflow-x-auto">
+                                        <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
+                                            <canvas id="statsChart"></canvas>
+                                        </div>
+                                    </div>
+                                </Accordion>
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
+                                    <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-wrap">
+                                        <h3 className="text-lg font-semibold mb-2 md:mb-0">📝 YAML Output (Read-Only)</h3>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
+                                                {copyText}
+                                            </button>
+                                            <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
+                                                Download
+                                            </button>
+                                            <Dropdown title="Merge" btnClasses={btnClasses.tertiary}>
+                                                <button
+                                                    onClick={() => mergeYAML(baseYaml)}
+                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                                                    disabled={!baseYaml || isMerging}
+                                                >
+                                                    Import & Merge
+                                                </button>
+                                                <label className={`block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                    Select Base YAML
+                                                    <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
+                                                </label>
+                                                <div className="flex items-center px-4 py-2 text-sm text-gray-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="liveMerge"
+                                                        checked={liveMerge}
+                                                        onChange={(e) => setLiveMerge(e.target.checked)}
+                                                        disabled={!baseYaml || isMerging}
+                                                        className="mr-2"
+                                                    />
+                                                    <label htmlFor="liveMerge">Live Merge</label>
+                                                </div>
+                                            </Dropdown>
+                                            <button onClick={() => { setOutputYaml(''); setFullYaml(''); setFilteredYaml(''); }} className={btnClasses.tertiary} disabled={isMerging}>
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="p-5 flex-grow">
+                                        <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
+                                    </div>
+                                </div>
                                 <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <button onClick={startGeneration} disabled={isGenerating || isMerging} className={btnClasses.primary}>
@@ -710,56 +760,6 @@ const App = () => {
                                             <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
                                         </div>
                                     )}
-                                </div>
-                                <Accordion title="📊 Statistics" open={true}>
-                                    <div className="overflow-x-auto">
-                                        <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
-                                            <canvas id="statsChart"></canvas>
-                                        </div>
-                                    </div>
-                                </Accordion>
-                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
-                                    <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-wrap">
-                                        <h3 className="text-lg font-semibold mb-2 md:mb-0">📝 YAML Output (Read-Only)</h3>
-                                        <div className="flex gap-2 flex-wrap">
-                                            <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
-                                                {copyText}
-                                            </button>
-                                            <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
-                                                Download
-                                            </button>
-                                            <Dropdown title="Merge" btnClasses={btnClasses.tertiary}>
-                                                <button
-                                                    onClick={() => mergeYAML(baseYaml)}
-                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
-                                                    disabled={!baseYaml || isMerging}
-                                                >
-                                                    Import & Merge
-                                                </button>
-                                                <label className={`block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                                    Select Base YAML
-                                                    <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
-                                                </label>
-                                                <div className="flex items-center px-4 py-2 text-sm text-gray-300">
-                                                    <input
-                                                        type="checkbox"
-                                                        id="liveMerge"
-                                                        checked={liveMerge}
-                                                        onChange={(e) => setLiveMerge(e.target.checked)}
-                                                        disabled={!baseYaml || isMerging}
-                                                        className="mr-2"
-                                                    />
-                                                    <label htmlFor="liveMerge">Live Merge</label>
-                                                </div>
-                                            </Dropdown>
-                                            <button onClick={() => { setOutputYaml(''); setFullYaml(''); setFilteredYaml(''); }} className={btnClasses.tertiary} disabled={isMerging}>
-                                                Clear
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="p-5 flex-grow">
-                                        <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
-                                    </div>
                                 </div>
                             </div>
                         </main>        </div>
