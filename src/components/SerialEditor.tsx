@@ -15,15 +15,34 @@ const SerialEditor = () => {
         safeEditStart: number | string;
         safeEditEnd: number | string;
         level: number | string;
+        bulletType: string | null;
     } | null>(null);
     const [binary, setBinary] = useState<string>('');
     const [modifiedBinary, setModifiedBinary] = useState<string>('');
     const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
     const [level, setLevel] = useState<number | null>(null);
     const [levelFoundAt, setLevelFoundAt] = useState<number | null>(null);
+    const [bulletType, setBulletType] = useState<string | null>(null);
+    const [bulletTypeHex, setBulletTypeHex] = useState<string | null>(null);
+    const [bulletTypeFoundAt, setBulletTypeFoundAt] = useState<number | null>(null);
 
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
+    const BULLET_TYPE_PATTERNS = {
+        "Jakobs Kinetic": ["2210", "2211"],
+        "Jakobs Explosive": ["2212", "2213"],
+        "Maliwan Elemental": ["2214", "2215"],
+        "Maliwan Cryo": ["2216"],
+        "Maliwan Shock": ["2217"],
+        "Torgue Explosive": ["2218", "2219"],
+        "Torgue Kinetic": ["221a", "221b"],
+        "Daedalus Kinetic": ["221c", "221d"],
+        "Daedalus Precision": ["221e", "221f"],
+        "COV Kinetic": ["2220", "2221"],
+        "COV Explosive": ["2222", "2223"],
+        "Ripper Kinetic": ["2224", "2225"],
+        "Ripper Melee": ["2226", "2227"],
+    };
     const MANUFACTURER_PATTERNS = {
         "Jakobs": [
             "2107",
@@ -289,6 +308,27 @@ const SerialEditor = () => {
         setLevel(detectedLevel);
         setLevelFoundAt(levelPos);
 
+        let foundBulletType: string | null = null;
+        let foundBulletHex: string | null = null;
+        let foundBulletIndex: number | null = null;
+
+        for (const [type, patterns] of Object.entries(BULLET_TYPE_PATTERNS)) {
+            for (const pattern of patterns) {
+                const index = hex_data.indexOf(pattern);
+                if (index !== -1) {
+                    foundBulletType = type;
+                    foundBulletHex = pattern;
+                    foundBulletIndex = index;
+                    break;
+                }
+            }
+            if (foundBulletType) break;
+        }
+
+        setBulletType(foundBulletType);
+        setBulletTypeHex(foundBulletHex);
+        setBulletTypeFoundAt(foundBulletIndex);
+
         setAnalysis({
             type: serialType,
             manufacturer: manufacturer,
@@ -296,6 +336,7 @@ const SerialEditor = () => {
             safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
             level: detectedLevel,
+            bulletType: foundBulletType,
         });
     };
 
@@ -344,6 +385,22 @@ const SerialEditor = () => {
         }
     };
 
+    const handleBulletTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newBulletType = e.target.value;
+        const newHex = BULLET_TYPE_PATTERNS[newBulletType][0];
+
+        if (bulletTypeFoundAt !== null) {
+            const newBinary = hexToBinary(newHex);
+            const start = bulletTypeFoundAt * 4;
+            const end = start + 16;
+            const prefix = modifiedBinary.substring(0, start);
+            const suffix = modifiedBinary.substring(end);
+            setModifiedBinary(prefix + newBinary + suffix);
+            setBulletType(newBulletType);
+            setBulletTypeHex(newHex);
+        }
+    };
+
     const handleSelectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setSelection(prev => ({ ...prev, [name]: parseInt(value, 10) }));
@@ -376,6 +433,10 @@ const SerialEditor = () => {
                 newBits = selectedBits;
         }
         setModifiedBinary(prefix + newBits + suffix);
+    };
+
+    const hexToBinary = (hex: string): string => {
+        return hex.split('').map(c => parseInt(c, 16).toString(2).padStart(4, '0')).join('');
     };
 
     const [newSerial, setNewSerial] = useState('');
@@ -463,7 +524,16 @@ const SerialEditor = () => {
                     <p><strong>Type:</strong> {analysis.type}</p>
                     <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
                     <p><strong>Level:</strong> {analysis.level}</p>
-                    <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">{analysis.hex}</span></p>
+                    {analysis.bulletType && <p><strong>Bullet Type:</strong> {analysis.bulletType}</p>}
+                    <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">
+                        {bulletTypeFoundAt !== null && analysis.hex ? (
+                            <>
+                                {analysis.hex.substring(0, bulletTypeFoundAt)}
+                                <span className="bg-green-900 text-green-300">{analysis.hex.substring(bulletTypeFoundAt, bulletTypeFoundAt + 4)}</span>
+                                {analysis.hex.substring(bulletTypeFoundAt + 4)}
+                            </>
+                        ) : analysis.hex}
+                    </span></p>
                     <p><strong>Safe Edit Start (after u~Q):</strong> {analysis.safeEditStart}</p>
                     <p><strong>Safe Edit End (preserve trailer):</strong> {analysis.safeEditEnd}</p>
                     
@@ -471,6 +541,19 @@ const SerialEditor = () => {
                     <FormGroup label="Item Level (0-50)">
                         <input type="number" value={level} onChange={handleLevelChange} className={inputClasses} min="0" max="50" />
                     </FormGroup>
+
+                    {bulletType && (
+                        <>
+                            <h3 className="text-lg font-semibold mt-2">Bullet Type Editor</h3>
+                            <FormGroup label="Bullet Type">
+                                <select value={bulletType} onChange={handleBulletTypeChange} className={inputClasses}>
+                                    {Object.keys(BULLET_TYPE_PATTERNS).map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </FormGroup>
+                        </>
+                    )}
 
                     <h3 className="text-lg font-semibold mt-2">Binary Data Editor</h3>
                     <div className="grid grid-cols-2 gap-4">
