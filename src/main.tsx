@@ -46,7 +46,7 @@ const App = () => {
             legendaryChance: 100,
         },
         validationChars: 12,
-        generateStats: true,
+        generateStats: false,
         debugMode: false,
     };
     const [state, setState] = useState<AppState>(() => {
@@ -472,7 +472,7 @@ const App = () => {
                                         </label>
                                     </div>
                                 </Accordion>
-                                <Accordion title="🔢 Output Counts">
+                                <Accordion title="🔢 Output Counts" open={true}>
             						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             							<FormGroup label="NEW">
             								                                <input
@@ -660,7 +660,7 @@ const App = () => {
                                 <SerialEditor />
                             </div>
                             <div className="flex flex-col gap-4 h-full xl:col-span-2 2xl:col-span-1">
-                                <Accordion title="📊 Statistics" open={true}>
+                                <Accordion title="📊 Statistics">
                                     <div className="overflow-x-auto">
                                         <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
                                             <canvas id="statsChart"></canvas>
