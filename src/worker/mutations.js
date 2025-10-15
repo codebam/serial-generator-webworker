@@ -94,20 +94,76 @@ export function generateAppendMutation(baseTail, finalLength, protectedStartLeng
     return startPart + padding;
 }
 
-// TG1: Targeted Character Flip (Low Intensity)
+// TG1: Append-Only Mutation (1x)
 export function generateCharacterFlipMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
-    if (self.debugMode) console.log(`[DEBUG] > TG1: Knowledge-Based Mutation (Mixed Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
-    const itemCharPool = getCharPoolForItemType(itemType);
-    const fullCharPool = ALPHABET.split('');
-    const mixedPool = [...new Set([...itemCharPool, ...fullCharPool])]; // Combine and remove duplicates
-    return generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, mixedPool);
+    if (self.debugMode) console.log(`[DEBUG] > TG1: Append-Only Mutation (1x) | finalLength: ${finalLength}, itemType: ${itemType}`);
+    
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    const safeEnd = baseTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+
+    let mutatedTail = baseTail;
+
+    // Apply 1 append-only mutation (inject a stable motif)
+    if (safeStart < safeEnd) {
+        const motif = randomChoice(STABLE_MOTIFS);
+        const injectPosition = randomInt(safeStart, safeEnd);
+        mutatedTail = mutatedTail.slice(0, injectPosition) + motif + mutatedTail.slice(injectPosition);
+    }
+
+    // Adjust length to finalLength
+    let finalMutatedTail = mutatedTail;
+    if (finalMutatedTail.length > finalLength) {
+        finalMutatedTail = finalMutatedTail.substring(0, finalLength);
+    } else if (finalMutatedTail.length < finalLength) {
+        const paddingLength = finalLength - finalMutatedTail.length;
+        const charPool = getCharPoolForItemType(itemType);
+        let padding = '';
+        for (let i = 0; i < paddingLength; i++) {
+            padding += randomChoice(charPool);
+        }
+        finalMutatedTail += padding;
+    }
+    
+    // Final alignment
+    return alignToBase85(finalMutatedTail, originalSerial);
 }
 
-// TG2: Segment Reversal (Medium Intensity)
+// TG2: Append-Only Mutation (2x)
 export function generateSegmentReversalMutation(baseTail, originalSerial, finalLength, itemType = 'GENERIC') {
-    if (self.debugMode) console.log(`[DEBUG] > TG2: Knowledge-Based Mutation (Item Pool) | finalLength: ${finalLength}, itemType: ${itemType}`);
-    const itemCharPool = getCharPoolForItemType(itemType);
-    return generateKnowledgeBasedMutation(baseTail, originalSerial, finalLength, itemType, itemCharPool);
+    if (self.debugMode) console.log(`[DEBUG] > TG2: Append-Only Mutation (2x) | finalLength: ${finalLength}, itemType: ${itemType}`);
+    
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    
+    let mutatedTail = baseTail;
+
+    // Apply 2 append-only mutations (inject stable motifs)
+    for (let i = 0; i < 2; i++) {
+        const currentSafeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+        if (safeStart >= currentSafeEnd) break; // Stop if no safe space is left
+
+        const motif = randomChoice(STABLE_MOTIFS);
+        const injectPosition = randomInt(safeStart, currentSafeEnd);
+        mutatedTail = mutatedTail.slice(0, injectPosition) + motif + mutatedTail.slice(injectPosition);
+    }
+
+    // Adjust length to finalLength
+    let finalMutatedTail = mutatedTail;
+    if (finalMutatedTail.length > finalLength) {
+        finalMutatedTail = finalMutatedTail.substring(0, finalLength);
+    } else if (finalMutatedTail.length < finalLength) {
+        const paddingLength = finalLength - finalMutatedTail.length;
+        const charPool = getCharPoolForItemType(itemType);
+        let padding = '';
+        for (let i = 0; i < paddingLength; i++) {
+            padding += randomChoice(charPool);
+        }
+        finalMutatedTail += padding;
+    }
+    
+    // Final alignment
+    return alignToBase85(finalMutatedTail, originalSerial);
 }
 
 // TG3: High-Value Part Manipulation (High Intensity)
