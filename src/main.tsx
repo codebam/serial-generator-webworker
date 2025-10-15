@@ -113,8 +113,8 @@ const App = () => {
             setStatusMessage('❌ ERROR: Failed to search serials.');
         }
     };
-    const updateChart = (chartData: { labels: string[]; data: number[] }) => {
-        if (!state.generateStats || !chartData) return;
+    const updateChart = React.useCallback((chartData: { labels: string[]; data: number[] }) => {
+        if (!chartData) return;
         const { labels, data } = chartData;
         const container = document.getElementById('chartContainer');
         if (container) {
@@ -154,21 +154,29 @@ const App = () => {
                 },
             },
         });
-    };
+    }, []);
     useEffect(() => {
         localStorage.setItem('serialGenState', JSON.stringify(state));
-        if (!workerRef.current) {
-            workerRef.current = new Worker('./src/worker/worker.js', { type: 'module' });
-        }
+    }, [state]);
+
+    useEffect(() => {
+        const worker = new Worker('./src/worker/worker.js', { type: 'module' });
+        workerRef.current = worker;
+
         const handleMessage = (e: MessageEvent) => {
             const { type, payload } = e.data;
             switch (type) {
                 case 'progress':
-                    setProgress((payload.processed / payload.total) * 100);
-                    setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+                    const newProgress = (payload.processed / payload.total) * 100;
+                    setProgress(newProgress);
+                    if (payload.stage === 'stats') {
+                        setStatusMessage(`Generating Statistics... ${Math.round(newProgress)}%`);
+                    } else {
+                        setStatusMessage(`Generating... ${payload.processed.toLocaleString()} / ${payload.total.toLocaleString()}`);
+                    }
                     break;
                 case 'stats_complete':
-                    if (state.generateStats && payload.chartData) {
+                    if (payload.chartData) {
                         updateChart(payload.chartData);
                     }
                     break;
@@ -179,7 +187,7 @@ const App = () => {
                         const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
                         setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
                         setOutputYaml(truncate(payload.validatedYaml || ''));
-                        if (state.generateStats && payload.chartData) {
+                        if (payload.chartData) {
                             updateChart(payload.chartData);
                         }
                     } else {
@@ -197,14 +205,19 @@ const App = () => {
                     break;
             }
         };
-        workerRef.current.onmessage = handleMessage;
+
+        worker.onmessage = handleMessage;
+
         return () => {
-            if (workerRef.current) {
-                workerRef.current.terminate();
-                workerRef.current = null;
-            }
+            worker.terminate();
         };
-    }, [state]);
+    }, [updateChart]);
+
+    useEffect(() => {
+        if (liveMerge && baseYaml && fullYaml && !isMerging) {
+            mergeYAML(baseYaml);
+        }
+    }, [fullYaml, liveMerge, baseYaml, isMerging]);
     useEffect(() => {
         if (liveMerge && baseYaml && fullYaml && !isMerging) {
             mergeYAML(baseYaml);
