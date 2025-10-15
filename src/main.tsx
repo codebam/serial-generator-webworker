@@ -435,7 +435,7 @@ const App = () => {
                 </h1>
                 <p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
             </header>
-                        <main className="grid grid-cols-1 xl:grid-cols-3 gap-8 max-w-screen-2xl mx-auto">
+                        <main className="grid grid-cols-1 xl:grid-cols-3 gap-8 max-w-screen-3xl mx-auto">
                             <div className="flex flex-col gap-4">
                                 <Accordion title="📦 Repository & Base Seed" open={true}>
                                     <FormGroup label="Repository">
