@@ -20,6 +20,14 @@ export function splitHeaderTail(serial) {
 	return [serial.substring(0, 10), serial.substring(10)];
 }
 
+export function getSerialTail(serial) {
+	const match = serial.match(HEADER_RE);
+	if (match && match[0]) {
+		return serial.substring(match[0].length);
+	}
+	return serial.substring(10);
+}
+
 export function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
     console.log('[DEBUG] Starting high-value part extraction...');
 	const frequencyMap = new Map();

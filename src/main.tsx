@@ -218,11 +218,6 @@ const App = () => {
             mergeYAML(baseYaml);
         }
     }, [fullYaml, liveMerge, baseYaml, isMerging]);
-    useEffect(() => {
-        if (liveMerge && baseYaml && fullYaml && !isMerging) {
-            mergeYAML(baseYaml);
-        }
-    }, [fullYaml, liveMerge, baseYaml, isMerging]);
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type, checked } = e.target;
         // Handle checkboxes
@@ -713,7 +708,7 @@ const App = () => {
                     <SerialEditor />
                 </div>
                 <div className="flex flex-col gap-4 h-full">
-                    <Accordion title="📊 Statistics" open={false}>
+                    <Accordion title="📊 Statistics" open={true}>
                         <div className="overflow-x-auto">
                             <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
                                 <canvas id="statsChart"></canvas>
