@@ -87,6 +87,15 @@ const App = () => {
     const [liveMerge, setLiveMerge] = useState<boolean>(false);
     const [baseYaml, setBaseYaml] = useState<string>('');
     const [isMerging, setIsMerging] = useState<boolean>(false);
+
+    const truncate = (str: string, maxLines = 50): string => {
+        if (!str) return '';
+        const lines = str.split('\n');
+        if (lines.length > maxLines) {
+            return lines.slice(0, maxLines).join('\n') + `\n\n... and ${lines.length - maxLines} more lines`;
+        }
+        return str;
+    };
     const [searchTerm, setSearchTerm] = useState<string>('');
     const workerRef = useRef(null);
     const chartRef = useRef(null);
@@ -169,7 +178,7 @@ const App = () => {
                         setFilteredYaml(payload.validatedYaml || '');
                         const filteredCount = payload.validatedYaml ? (payload.validatedYaml.match(/serial:/g) || []).length : 0;
                         setStatusMessage(`Filtering complete.\nCopy/Download will use the ${filteredCount} filtered serials.`);
-                        setOutputYaml(payload.validatedYaml || '');
+                        setOutputYaml(truncate(payload.validatedYaml || ''));
                         if (state.generateStats && payload.chartData) {
                             updateChart(payload.chartData);
                         }
@@ -290,7 +299,7 @@ const App = () => {
         }
     };
     const downloadYAML = () => {
-        const contentToDownload = outputYaml;
+        const contentToDownload = filteredYaml || fullYaml;
         if (!contentToDownload) return;
         const blob = new Blob([contentToDownload], { type: 'text/yaml;charset=utf-8;' });
         const link = document.createElement('a');
@@ -331,7 +340,9 @@ const App = () => {
             if (generatedSerialsYaml && generatedSerialsYaml.state && generatedSerialsYaml.state.inventory && generatedSerialsYaml.state.inventory.items && generatedSerialsYaml.state.inventory.items.backpack) {
                 if (findAndReplaceBackpack(importedYaml, generatedSerialsYaml.state.inventory.items.backpack)) {
                     const mergedYamlString = jsyaml.dump(importedYaml, { lineWidth: -1, quotingType: "'" });
-                    setOutputYaml(mergedYamlString);
+                    setOutputYaml(truncate(mergedYamlString));
+                    setFullYaml(mergedYamlString);
+                    setFilteredYaml('');
                     setStatusMessage('YAML merged successfully. Ready to download.');
                 } else {
                     setStatusMessage('❌ ERROR: Could not find a suitable location to merge the serials.');
@@ -730,7 +741,7 @@ const App = () => {
                                         <label htmlFor="liveMerge">Live Merge</label>
                                     </div>
                                 </Dropdown>
-                                <button onClick={() => setOutputYaml('')} className={btnClasses.tertiary} disabled={isMerging}>
+                                <button onClick={() => { setOutputYaml(''); setFullYaml(''); setFilteredYaml(''); }} className={btnClasses.tertiary} disabled={isMerging}>
                                     Clear
                                 </button>
                             </div>
