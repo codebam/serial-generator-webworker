@@ -175,12 +175,15 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
     const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
     const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
     
+    // Ensure a minimum finalLength to avoid very short, low-value serials
+    const effectiveFinalLength = Math.max(finalLength, 20); // Enforce minimum length of 20
+
     // 1. Length Adjustment
     let mutatedTail = baseTail;
-    if (mutatedTail.length > finalLength) {
-        mutatedTail = mutatedTail.substring(0, finalLength);
-    } else if (mutatedTail.length < finalLength) {
-        const paddingLength = finalLength - mutatedTail.length;
+    if (mutatedTail.length > effectiveFinalLength) {
+        mutatedTail = mutatedTail.substring(0, effectiveFinalLength);
+    } else if (mutatedTail.length < effectiveFinalLength) {
+        const paddingLength = effectiveFinalLength - mutatedTail.length;
         const charPool = BASE85_ALPHABET.split('');
         let padding = '';
         for (let i = 0; i < paddingLength; i++) {
@@ -191,7 +194,22 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
 
     const safeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
 
-    // 2. Motif Injection (20% chance)
+    // 2. NEW: Motif Chaining (40% chance)
+    if (getNextRandom() < 0.4) {
+        if (safeStart < safeEnd) {
+            let motifChain = '';
+            const chainCount = randomInt(2, 3); // Chain 2 to 3 motifs
+            for (let i = 0; i < chainCount; i++) {
+                motifChain += randomChoice(STABLE_MOTIFS);
+            }
+            if (safeEnd - safeStart > motifChain.length) {
+                const injectPosition = randomInt(safeStart, safeEnd - motifChain.length);
+                mutatedTail = mutatedTail.slice(0, injectPosition) + motifChain + mutatedTail.slice(injectPosition);
+            }
+        }
+    }
+
+    // 3. Motif Injection (Single) (20% chance)
     if (getNextRandom() < 0.2) {
         if (safeStart < safeEnd) {
             const motif = randomChoice(STABLE_MOTIFS);
@@ -202,8 +220,8 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
         }
     }
 
-    // 3. Segment Scramble (30% chance)
-    if (getNextRandom() < 0.3) {
+    // 4. Segment Scramble (20% chance)
+    if (getNextRandom() < 0.2) {
         const chunkSize = randomInt(minChunkSize, maxChunkSize);
         if (safeEnd - safeStart > chunkSize) {
             const start = randomInt(safeStart, safeEnd - chunkSize);
@@ -213,7 +231,7 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
         }
     }
 
-    // 4. Character Flips (5% chance per character)
+    // 5. Character Flips (5% chance per character)
     const chars = [...mutatedTail];
     const charPool = BASE85_ALPHABET.split('');
     for (let i = safeStart; i < safeEnd; i++) {
