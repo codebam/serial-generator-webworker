@@ -435,332 +435,334 @@ const App = () => {
                 </h1>
                 <p className="text-gray-400 text-lg mt-2">A professional tool for procedural serial generation and mutation.</p>
             </header>
-            <main className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-screen-2xl mx-auto">
-                <div className="flex flex-col gap-4">
-                    <Accordion title="📦 Repository & Base Seed" open={true}>
-                        <FormGroup label="Repository">
-                            <textarea
-                                className={`${inputClasses} min-h-[120px]`}
-                                value={state.repository || ''}
-                                onChange={handleRepoEdit}
-                                placeholder="Paste serials here..."
-                                disabled={isMerging}
-                            ></textarea>
-                        </FormGroup>
-                        <FormGroup label="Search Serials">
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    name="searchTerm"
-                                    className={inputClasses}
-                                    placeholder="Enter search term..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    disabled={isMerging}
-                                />
-                                <button onClick={searchSerials} className={btnClasses.secondary} disabled={isMerging}>Search</button>
-                            </div>
-                        </FormGroup>
-                        <FormGroup label="Base Serial Seed">
-                            <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={isMerging}></textarea>
-                        </FormGroup>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={saveState} className={btnClasses.secondary} disabled={isMerging}>Save State</button>
-                            <label className={`${btnClasses.secondary} text-center cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                Restore State
-                                <input type="file" accept=".yaml,.yml" onChange={restoreState} className="hidden" disabled={isMerging} />
-                            </label>
-                        </div>
-                    </Accordion>                    <Accordion title="🧬 Mutation Rules" open={true}>
-                        <FormGroup label="Item Type">
-                            <select name="itemType" value={state.itemType} onChange={handleInputChange} className={inputClasses} disabled={isMerging}>
-                                <option value="GUN">Gun</option>
-                                <option value="SHIELD">Shield</option>
-                                <option value="CLASS_MOD">Class Mod</option>
-                                <option value="ENHANCEMENT">Enhancement</option>
-                                <option value="REPKIT">Repair Kit</option>
-                                <option value="ORDNANCE">Ordnance</option>
-                                <option value="GENERIC">Generic</option>
-                            </select>
-                        </FormGroup>
-						                        <MutableRangeSelector
-													seed={state.seed}
-													start={state.rules.mutableStart}
-													end={state.rules.mutableEnd}
-													setRange={({ start, end }) =>
-														setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
-												}
-													inputClasses={inputClasses}
-													                                    												/>						<FormGroup label="Crossover Chunk Size">
-							                            <div className="grid grid-cols-3 gap-4">
-															<input
-																type="number"
-																name="rules.minChunk"
-																value={state.rules.minChunk}
-																onChange={handleInputChange}
-																className={inputClasses}
-																title="The smallest crossover segment size."
-																disabled={isMerging}
-															/>								<input
-									type="number"
-									name="rules.maxChunk"
-									value={state.rules.maxChunk}
-									onChange={handleInputChange}
-									className={inputClasses}
-									title="The largest crossover segment size."
-									disabled={isMerging}
-								/>
-								<input
-									type="number"
-									name="rules.targetChunk"
-									value={state.rules.targetChunk}
-									onChange={handleInputChange}
-									className={inputClasses}
-									title="The preferred crossover segment size."
-									disabled={isMerging}
-								/>
-							</div>
-						</FormGroup>
-						<FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
-							                                <input
-															type="range"
-															name="rules.legendaryChance"
-															min="0"
-															max="100"
-															value={state.rules.legendaryChance}
-															onChange={handleInputChange}
-															className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-															disabled={isMerging}
-														/>						</FormGroup>
-						<FormGroup label="High-Value Part Size Range">
-							<div className="grid grid-cols-2 gap-4">
-								                                <input
-																	type="number"
-																	name="rules.minPart"
-																	value={state.rules.minPart}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>
-																<input
-																	type="number"
-																	name="rules.maxPart"
-																	value={state.rules.maxPart}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>							</div>
-						</FormGroup>
-						<FormGroup label="Final Tail Length Offset">
-							                                <input
-															type="number"
-															name="rules.targetOffset"
-															value={state.rules.targetOffset}
-															onChange={handleInputChange}
-															className={inputClasses}
-															disabled={isMerging}
-														/>						</FormGroup>
-					</Accordion>
-					<Accordion title="🔢 Output Counts">
-						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-							<FormGroup label="NEW">
-								                                <input
-																	type="number"
-																	name="counts.new"
-																	value={state.counts.new}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>								<p className="text-xs text-gray-400">Extends the base seed with random characters, preserving a prefix.</p>
-							</FormGroup>
-							<FormGroup label="TG1">
-								                                <input
-																	type="number"
-																	name="counts.tg1"
-																	value={state.counts.tg1}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>
-																                                                                <p className="text-xs text-gray-400">Knowledge-based mutation using a mix of the item's character set and the full character set.</p>
-																															</FormGroup>
-																															<FormGroup label="TG2">
-																																<input
-																																	type="number"
-																																	name="counts.tg2"
-																																	value={state.counts.tg2}
-																																	onChange={handleInputChange}
-																																	className={inputClasses}
-																																	disabled={isMerging}
-																																/>
-																																<p className="text-xs text-gray-400">Knowledge-based mutation using only the item's character set.</p>															</FormGroup>
-															<FormGroup label="TG3">
-																<input
-																	type="number"
-																	name="counts.tg3"
-																	value={state.counts.tg3}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>
-																<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
-															</FormGroup>
-															<FormGroup label="TG4">
-																<input
-																	type="number"
-																	name="counts.tg4"
-																	value={state.counts.tg4}
-																	onChange={handleInputChange}
-																	className={inputClasses}
-																	disabled={isMerging}
-																/>								<p className="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
-							</FormGroup>
-						</div>
-					</Accordion>
-                    <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={startGeneration} disabled={isGenerating || isMerging} className={btnClasses.primary}>
-                                Generate Serials
-                            </button>
-                            <button onClick={resetForm} disabled={isGenerating || isMerging} className={btnClasses.secondary}>
-                                Reset All
-                            </button>
-                        </div>
-                        <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2">
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="genStats"
-                                    name="generateStats"
-                                    checked={state.generateStats}
-                                    onChange={handleInputChange}
-                                    className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                                    disabled={isMerging}
-                                />
-                                <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">
-                                    Generate Part Statistics
-                                </label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="debugMode"
-                                    name="debugMode"
-                                    checked={state.debugMode}
-                                    onChange={handleInputChange}
-                                    className="h-4 w-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
-                                    disabled={isMerging}
-                                />
-                                <label htmlFor="debugMode" className="ml-2 text-sm font-medium text-gray-300">
-                                    Enable Debug Logging
-                                </label>
-                            </div>
-                        </div>
-                        <div
-                            className="h-10 text-center text-sm text-gray-400 flex items-center justify-center"
-                            style={{ whiteSpace: 'pre-line' }}
-                        >
-                            {statusMessage}
-                        </div>
-                        {isGenerating && (
-                            <div className="w-full bg-gray-700 rounded-full h-2.5">
-                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
-                            </div>
-                        )}
-                    </div>
-                    <Accordion title="✔️ Filtering">
-                        <FormGroup label="Characters to Filter">
-                            <input
-                                type="number"
-                                name="validationChars"
-                                value={state.validationChars}
-                                onChange={handleInputChange}
-                                className={inputClasses}
-                                disabled={isMerging}
-                            />
-                        </FormGroup>
-                        <button
-                            onClick={() =>
-                                workerRef.current.postMessage({
-                                    type: 'validate',
-                                    payload: {
-                                        yaml: fullYaml,
-                                        seed: state.seed,
-                                        validationChars: state.validationChars,
-                                        generateStats: state.generateStats,
-                                        minPart: state.rules.minPart,
-                                        maxPart: state.rules.maxPart,
-                                        debugMode: state.debugMode,
-                                    },
-                                })
-                            }
-                            className={btnClasses.secondary}
-                            disabled={isMerging}
-                        >
-                            Filter
-                        </button>
-                        {validationResult && (
-                            <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center whitespace-pre-wrap">
-                                {validationResult}
-                            </div>
-                        )}
-                    </Accordion>
-                    <SerialEditor />
-                </div>
-                <div className="flex flex-col gap-4 h-full">
-                    <Accordion title="📊 Statistics" open={true}>
-                        <div className="overflow-x-auto">
-                            <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
-                                <canvas id="statsChart"></canvas>
-                            </div>
-                        </div>
-                    </Accordion>
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
-                        <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-wrap">
-                            <h3 className="text-lg font-semibold mb-2 md:mb-0">📝 YAML Output (Read-Only)</h3>
-                            <div className="flex gap-2 flex-wrap">
-                                <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
-                                    {copyText}
-                                </button>
-                                <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
-                                    Download
-                                </button>
-                                <Dropdown title="Merge" btnClasses={btnClasses.tertiary}>
-                                    <button
-                                        onClick={() => mergeYAML(baseYaml)}
-                                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
-                                        disabled={!baseYaml || isMerging}
-                                    >
-                                        Import & Merge
-                                    </button>
-                                    <label className={`block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                        Select Base YAML
-                                        <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
-                                    </label>
-                                    <div className="flex items-center px-4 py-2 text-sm text-gray-300">
-                                        <input
-                                            type="checkbox"
-                                            id="liveMerge"
-                                            checked={liveMerge}
-                                            onChange={(e) => setLiveMerge(e.target.checked)}
-                                            disabled={!baseYaml || isMerging}
-                                            className="mr-2"
-                                        />
-                                        <label htmlFor="liveMerge">Live Merge</label>
+                        <main className="grid grid-cols-1 xl:grid-cols-3 gap-8 max-w-screen-2xl mx-auto">
+                            <div className="flex flex-col gap-4">
+                                <Accordion title="📦 Repository & Base Seed" open={true}>
+                                    <FormGroup label="Repository">
+                                        <textarea
+                                            className={`${inputClasses} min-h-[120px]`}
+                                            value={state.repository || ''}
+                                            onChange={handleRepoEdit}
+                                            placeholder="Paste serials here..."
+                                            disabled={isMerging}
+                                        ></textarea>
+                                    </FormGroup>
+                                    <FormGroup label="Search Serials">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                name="searchTerm"
+                                                className={inputClasses}
+                                                placeholder="Enter search term..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                disabled={isMerging}
+                                            />
+                                            <button onClick={searchSerials} className={btnClasses.secondary} disabled={isMerging}>Search</button>
+                                        </div>
+                                    </FormGroup>
+                                    <FormGroup label="Base Serial Seed">
+                                        <textarea className={`${inputClasses} h-24`} value={state.seed} onChange={handleSeedEdit} disabled={isMerging}></textarea>
+                                    </FormGroup>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button onClick={saveState} className={btnClasses.secondary} disabled={isMerging}>Save State</button>
+                                        <label className={`${btnClasses.secondary} text-center cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                            Restore State
+                                            <input type="file" accept=".yaml,.yml" onChange={restoreState} className="hidden" disabled={isMerging} />
+                                        </label>
                                     </div>
-                                </Dropdown>
-                                <button onClick={() => { setOutputYaml(''); setFullYaml(''); setFilteredYaml(''); }} className={btnClasses.tertiary} disabled={isMerging}>
-                                    Clear
-                                </button>
+                                </Accordion>
+                                <Accordion title="🔢 Output Counts">
+            						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            							<FormGroup label="NEW">
+            								                                <input
+            																	type="number"
+            																	name="counts.new"
+            																	value={state.counts.new}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>								<p className="text-xs text-gray-400">Extends the base seed with random characters, preserving a prefix.</p>
+            							</FormGroup>
+            							<FormGroup label="TG1">
+            								                                <input
+            																	type="number"
+            																	name="counts.tg1"
+            																	value={state.counts.tg1}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>
+            								                                                                <p className="text-xs text-gray-400">Knowledge-based mutation using a mix of the item's character set and the full character set.</p>
+            																															</FormGroup>
+            																															<FormGroup label="TG2">
+            																																<input
+            																																	type="number"
+            																																	name="counts.tg2"
+            																																	value={state.counts.tg2}
+            																																	onChange={handleInputChange}
+            																																	className={inputClasses}
+            																																	disabled={isMerging}
+            																																/>
+            																																<p className="text-xs text-gray-400">Knowledge-based mutation using only the item's character set.</p>															</FormGroup>
+            															<FormGroup label="TG3">
+            																<input
+            																	type="number"
+            																	name="counts.tg3"
+            																	value={state.counts.tg3}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>
+            																<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
+            															</FormGroup>
+            															<FormGroup label="TG4">
+            																<input
+            																	type="number"
+            																	name="counts.tg4"
+            																	value={state.counts.tg4}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>								<p className="text-xs text-gray-400">Overwrites a large part of the serial with a random chunk from the repository.</p>
+            							</FormGroup>
+            						</div>
+            					</Accordion>
                             </div>
-                        </div>
-                        <div className="p-5 flex-grow">
-                            <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
+                            <div className="flex flex-col gap-4">
+                                <Accordion title="🧬 Mutation Rules" open={true}>
+                                    <FormGroup label="Item Type">
+                                        <select name="itemType" value={state.itemType} onChange={handleInputChange} className={inputClasses} disabled={isMerging}>
+                                            <option value="GUN">Gun</option>
+                                            <option value="SHIELD">Shield</option>
+                                            <option value="CLASS_MOD">Class Mod</option>
+                                            <option value="ENHANCEMENT">Enhancement</option>
+                                            <option value="REPKIT">Repair Kit</option>
+                                            <option value="ORDNANCE">Ordnance</option>
+                                            <option value="GENERIC">Generic</option>
+                                        </select>
+                                    </FormGroup>
+            						                        <MutableRangeSelector
+            													seed={state.seed}
+            													start={state.rules.mutableStart}
+            													end={state.rules.mutableEnd}
+            													setRange={({ start, end }) =>
+            														setState((prev) => ({ ...prev, rules: { ...prev.rules, mutableStart: start, mutableEnd: end } }))
+            												}
+            													inputClasses={inputClasses}
+            													                                    												/>						<FormGroup label="Crossover Chunk Size">
+            							                            <div className="grid grid-cols-3 gap-4">
+            															<input
+            																type="number"
+            																name="rules.minChunk"
+            																value={state.rules.minChunk}
+            																onChange={handleInputChange}
+            																className={inputClasses}
+            																title="The smallest crossover segment size."
+            																disabled={isMerging}
+            															/>								<input
+            									type="number"
+            									name="rules.maxChunk"
+            									value={state.rules.maxChunk}
+            									onChange={handleInputChange}
+            									className={inputClasses}
+            									title="The largest crossover segment size."
+            									disabled={isMerging}
+            								/>
+            								<input
+            									type="number"
+            									name="rules.targetChunk"
+            									value={state.rules.targetChunk}
+            									onChange={handleInputChange}
+            									className={inputClasses}
+            									title="The preferred crossover segment size."
+            									disabled={isMerging}
+            								/>
+            							</div>
+            						</FormGroup>
+            						<FormGroup label={`Legendary Part Chance (${state.rules.legendaryChance}%)`}>
+            							                                <input
+            															type="range"
+            															name="rules.legendaryChance"
+            															min="0"
+            															max="100"
+            															value={state.rules.legendaryChance}
+            															onChange={handleInputChange}
+            															className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            															disabled={isMerging}
+            														/>						</FormGroup>
+            						<FormGroup label="High-Value Part Size Range">
+            							<div className="grid grid-cols-2 gap-4">
+            								                                <input
+            																	type="number"
+            																	name="rules.minPart"
+            																	value={state.rules.minPart}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>
+            																<input
+            																	type="number"
+            																	name="rules.maxPart"
+            																	value={state.rules.maxPart}
+            																	onChange={handleInputChange}
+            																	className={inputClasses}
+            																	disabled={isMerging}
+            																/>							</div>
+            						</FormGroup>
+            						<FormGroup label="Final Tail Length Offset">
+            							                                <input
+            															type="number"
+            															name="rules.targetOffset"
+            															value={state.rules.targetOffset}
+            															onChange={handleInputChange}
+            															className={inputClasses}
+            															disabled={isMerging}
+            														/>						</FormGroup>
+            					</Accordion>
+                                <Accordion title="✔️ Filtering">
+                                    <FormGroup label="Characters to Filter">
+                                        <input
+                                            type="number"
+                                            name="validationChars"
+                                            value={state.validationChars}
+                                            onChange={handleInputChange}
+                                            className={inputClasses}
+                                            disabled={isMerging}
+                                        />
+                                    </FormGroup>
+                                    <button
+                                        onClick={() =>
+                                            workerRef.current.postMessage({
+                                                type: 'validate',
+                                                payload: {
+                                                    yaml: fullYaml,
+                                                    seed: state.seed,
+                                                    validationChars: state.validationChars,
+                                                    generateStats: state.generateStats,
+                                                    minPart: state.rules.minPart,
+                                                    maxPart: state.rules.maxPart,
+                                                    debugMode: state.debugMode,
+                                                },
+                                            })
+                                        }
+                                        className={btnClasses.secondary}
+                                        disabled={isMerging}
+                                    >
+                                        Filter
+                                    </button>
+                                    {validationResult && (
+                                        <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-md text-center whitespace-pre-wrap">
+                                            {validationResult}
+                                        </div>
+                                    )}
+                                </Accordion>
+                                <SerialEditor />
+                            </div>
+                            <div className="flex flex-col gap-4 h-full xl:col-span-2 2xl:col-span-1">
+                                <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 flex flex-col gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button onClick={startGeneration} disabled={isGenerating || isMerging} className={btnClasses.primary}>
+                                            Generate Serials
+                                        </button>
+                                        <button onClick={resetForm} disabled={isGenerating || isMerging} className={btnClasses.secondary}>
+                                            Reset All
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2">
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="genStats"
+                                                name="generateStats"
+                                                checked={state.generateStats}
+                                                onChange={handleInputChange}
+                                                className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                                                disabled={isMerging}
+                                            />
+                                            <label htmlFor="genStats" className="ml-2 text-sm font-medium text-gray-300">
+                                                Generate Part Statistics
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="debugMode"
+                                                name="debugMode"
+                                                checked={state.debugMode}
+                                                onChange={handleInputChange}
+                                                className="h-4 w-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
+                                                disabled={isMerging}
+                                            />
+                                            <label htmlFor="debugMode" className="ml-2 text-sm font-medium text-gray-300">
+                                                Enable Debug Logging
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div
+                                        className="h-10 text-center text-sm text-gray-400 flex items-center justify-center"
+                                        style={{ whiteSpace: 'pre-line' }}
+                                    >
+                                        {statusMessage}
+                                    </div>
+                                    {isGenerating && (
+                                        <div className="w-full bg-gray-700 rounded-full h-2.5">
+                                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                                        </div>
+                                    )}
+                                </div>
+                                <Accordion title="📊 Statistics" open={true}>
+                                    <div className="overflow-x-auto">
+                                        <div id="chartContainer" style={{ position: 'relative', height: '400px' }}>
+                                            <canvas id="statsChart"></canvas>
+                                        </div>
+                                    </div>
+                                </Accordion>
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg flex flex-col flex-grow">
+                                    <div className="p-4 flex justify-between items-center border-b border-gray-700 flex-wrap">
+                                        <h3 className="text-lg font-semibold mb-2 md:mb-0">📝 YAML Output (Read-Only)</h3>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button onClick={copyToClipboard} className={btnClasses.tertiary} disabled={isMerging}>
+                                                {copyText}
+                                            </button>
+                                            <button onClick={downloadYAML} className={btnClasses.tertiary} disabled={isMerging}>
+                                                Download
+                                            </button>
+                                            <Dropdown title="Merge" btnClasses={btnClasses.tertiary}>
+                                                <button
+                                                    onClick={() => mergeYAML(baseYaml)}
+                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                                                    disabled={!baseYaml || isMerging}
+                                                >
+                                                    Import & Merge
+                                                </button>
+                                                <label className={`block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 cursor-pointer ${isMerging ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                    Select Base YAML
+                                                    <input type="file" accept=".yaml,.yml" onChange={handleBaseYamlChange} className="hidden" disabled={isMerging} />
+                                                </label>
+                                                <div className="flex items-center px-4 py-2 text-sm text-gray-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="liveMerge"
+                                                        checked={liveMerge}
+                                                        onChange={(e) => setLiveMerge(e.target.checked)}
+                                                        disabled={!baseYaml || isMerging}
+                                                        className="mr-2"
+                                                    />
+                                                    <label htmlFor="liveMerge">Live Merge</label>
+                                                </div>
+                                            </Dropdown>
+                                            <button onClick={() => { setOutputYaml(''); setFullYaml(''); setFilteredYaml(''); }} className={btnClasses.tertiary} disabled={isMerging}>
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="p-5 flex-grow">
+                                        <textarea className={`${inputClasses} h-full w-full resize-none`} readOnly value={outputYaml}></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>        </div>
     );
 };
 const container = document.getElementById('root');

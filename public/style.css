@@ -17,3 +17,12 @@ body {
 .accordion-summary::-webkit-details-marker {
     display: none;
 }
+
+@media (min-width: 1536px) {
+    .grid-cols-1.xl\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .xl\:col-span-2 {
+        grid-column: span 2 / span 2;
+    }
+}
