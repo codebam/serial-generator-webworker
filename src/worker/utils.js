@@ -17,7 +17,7 @@ export function ensureCharset(s) {
 export function splitHeaderTail(serial) {
 	const match = serial.match(HEADER_RE);
 	if (match) return [match[1], serial.substring(match[0].length)];
-	return [serial.substring(0, 10), serial.substring(10)];
+	return [serial.substring(0, 12), serial.substring(12)];
 }
 
 export function getSerialTail(serial) {
@@ -25,7 +25,7 @@ export function getSerialTail(serial) {
 	if (match && match[0]) {
 		return serial.substring(match[0].length);
 	}
-	return serial.substring(10);
+	return serial.substring(12);
 }
 
 export function extractHighValueParts(repoTails, minPartSize, maxPartSize) {
