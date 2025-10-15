@@ -35,7 +35,7 @@ const App = () => {
         itemType: 'GUN', // <-- NEW: Default item type
         counts: { new: 10000, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
         rules: {
-            targetOffset: 250,
+            targetOffset: 200,
             mutableStart: 13,
             mutableEnd: 13,
             minChunk: 3,
