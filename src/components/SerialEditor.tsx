@@ -16,6 +16,7 @@ const SerialEditor = () => {
         safeEditEnd: number | string;
         level: number | string;
         element: string | null;
+        bulletType: string | null;
     } | null>(null);
     const [binary, setBinary] = useState<string>('');
     const [modifiedBinary, setModifiedBinary] = useState<string>('');
@@ -25,6 +26,9 @@ const SerialEditor = () => {
     const [element, setElement] = useState<string | null>(null);
     const [elementPattern, setElementPattern] = useState<string | null>(null);
     const [elementFoundAt, setElementFoundAt] = useState<number | null>(null);
+    const [bulletType, setBulletType] = useState<string | null>(null);
+    const [bulletTypeHex, setBulletTypeHex] = useState<string | null>(null);
+    const [bulletTypeFoundAt, setBulletTypeFoundAt] = useState<number | null>(null);
 
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
@@ -40,6 +44,21 @@ const SerialEditor = () => {
         "FIRE (alt)": "10011000",
         "RAD (alt)": "11011000",
         "SHOCK (alt)": "10111000",
+    };
+    const BULLET_TYPE_PATTERNS = {
+        "Jakobs Kinetic": ["2210", "2211"],
+        "Jakobs Explosive": ["2212", "2213"],
+        "Maliwan Elemental": ["2214", "2215"],
+        "Maliwan Cryo": ["2216"],
+        "Maliwan Shock": ["2217"],
+        "Torgue Explosive": ["2218", "2219"],
+        "Torgue Kinetic": ["221a", "221b"],
+        "Daedalus Kinetic": ["221c", "221d"],
+        "Daedalus Precision": ["221e", "221f"],
+        "COV Kinetic": ["2220", "2221"],
+        "COV Explosive": ["2222", "2223"],
+        "Ripper Kinetic": ["2224", "2225"],
+        "Ripper Melee": ["2226", "2227"],
     };
     const MANUFACTURER_PATTERNS = {
         "Jakobs": [
@@ -306,10 +325,10 @@ const SerialEditor = () => {
         setLevel(detectedLevel);
         setLevelFoundAt(levelPos);
 
+        // Elemental Pattern Detection (Binary)
         let foundElement: string | null = null;
         let foundElementPattern: string | null = null;
         let foundElementIndex: number | null = null;
-
         for (const [element, pattern] of Object.entries(ELEMENTAL_PATTERNS)) {
             const index = binary_string.indexOf(pattern);
             if (index !== -1) {
@@ -319,10 +338,29 @@ const SerialEditor = () => {
                 break;
             }
         }
-
         setElement(foundElement);
         setElementPattern(foundElementPattern);
         setElementFoundAt(foundElementIndex);
+
+        // Bullet Type Pattern Detection (Hex)
+        let foundBulletType: string | null = null;
+        let foundBulletHex: string | null = null;
+        let foundBulletIndex: number | null = null;
+        for (const [type, patterns] of Object.entries(BULLET_TYPE_PATTERNS)) {
+            for (const pattern of patterns) {
+                const index = hex_data.indexOf(pattern);
+                if (index !== -1) {
+                    foundBulletType = type;
+                    foundBulletHex = pattern;
+                    foundBulletIndex = index;
+                    break;
+                }
+            }
+            if (foundBulletType) break;
+        }
+        setBulletType(foundBulletType);
+        setBulletTypeHex(foundBulletHex);
+        setBulletTypeFoundAt(foundBulletIndex);
 
         setAnalysis({
             type: serialType,
@@ -332,6 +370,7 @@ const SerialEditor = () => {
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
             level: detectedLevel,
             element: foundElement,
+            bulletType: foundBulletType,
         });
     };
 
@@ -393,6 +432,19 @@ const SerialEditor = () => {
             setModifiedBinary(prefix + newBinary + suffix);
             setBulletType(newBulletType);
             setBulletTypeHex(newHex);
+        }
+    };
+
+    const handleElementChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newElement = e.target.value;
+        const newPattern = ELEMENTAL_PATTERNS[newElement];
+
+        if (elementFoundAt !== null) {
+            const prefix = modifiedBinary.substring(0, elementFoundAt);
+            const suffix = modifiedBinary.substring(elementFoundAt + 8);
+            setModifiedBinary(prefix + newPattern + suffix);
+            setElement(newElement);
+            setElementPattern(newPattern);
         }
     };
 
@@ -519,6 +571,7 @@ const SerialEditor = () => {
                     <p><strong>Type:</strong> {analysis.type}</p>
                     <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
                     <p><strong>Level:</strong> {analysis.level}</p>
+                    {analysis.element && <p><strong>Element:</strong> {analysis.element}</p>}
                     {analysis.bulletType && <p><strong>Bullet Type:</strong> {analysis.bulletType}</p>}
                     <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">
                         {bulletTypeFoundAt !== null && analysis.hex ? (
@@ -536,6 +589,19 @@ const SerialEditor = () => {
                     <FormGroup label="Item Level (0-50)">
                         <input type="number" value={level} onChange={handleLevelChange} className={inputClasses} min="0" max="50" />
                     </FormGroup>
+
+                    {element && (
+                        <>
+                            <h3 className="text-lg font-semibold mt-2">Element Editor</h3>
+                            <FormGroup label="Element">
+                                <select value={element} onChange={handleElementChange} className={inputClasses}>
+                                    {Object.keys(ELEMENTAL_PATTERNS).map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </FormGroup>
+                        </>
+                    )}
 
                     {bulletType && (
                         <>
@@ -567,9 +633,19 @@ const SerialEditor = () => {
                     </div>
                     <h3 className="text-lg font-semibold mt-2">Modified Binary Data</h3>
                     <div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
-                        <span>{modifiedBinary.substring(0, selection.start)}</span>
-                        <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
-                        <span>{modifiedBinary.substring(selection.end)}</span>
+                        {elementFoundAt !== null ? (
+                            <>
+                                {modifiedBinary.substring(0, elementFoundAt)}
+                                <span className="bg-purple-900 text-purple-300">{modifiedBinary.substring(elementFoundAt, elementFoundAt + 8)}</span>
+                                {modifiedBinary.substring(elementFoundAt + 8)}
+                            </>
+                        ) : (
+                            <>
+                                <span>{modifiedBinary.substring(0, selection.start)}</span>
+                                <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
+                                <span>{modifiedBinary.substring(selection.end)}</span>
+                            </>
+                        )}
                     </div>
                     {modifiedBase85 && (
                         <div className="mt-4">
@@ -582,5 +658,3 @@ const SerialEditor = () => {
         </Accordion>
     );
 };
-
-window.SerialEditor = SerialEditor;
