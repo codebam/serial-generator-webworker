@@ -15,33 +15,31 @@ const SerialEditor = () => {
         safeEditStart: number | string;
         safeEditEnd: number | string;
         level: number | string;
-        bulletType: string | null;
+        element: string | null;
     } | null>(null);
     const [binary, setBinary] = useState<string>('');
     const [modifiedBinary, setModifiedBinary] = useState<string>('');
     const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
     const [level, setLevel] = useState<number | null>(null);
     const [levelFoundAt, setLevelFoundAt] = useState<number | null>(null);
-    const [bulletType, setBulletType] = useState<string | null>(null);
-    const [bulletTypeHex, setBulletTypeHex] = useState<string | null>(null);
-    const [bulletTypeFoundAt, setBulletTypeFoundAt] = useState<number | null>(null);
+    const [element, setElement] = useState<string | null>(null);
+    const [elementPattern, setElementPattern] = useState<string | null>(null);
+    const [elementFoundAt, setElementFoundAt] = useState<number | null>(null);
 
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
-    const BULLET_TYPE_PATTERNS = {
-        "Jakobs Kinetic": ["2210", "2211"],
-        "Jakobs Explosive": ["2212", "2213"],
-        "Maliwan Elemental": ["2214", "2215"],
-        "Maliwan Cryo": ["2216"],
-        "Maliwan Shock": ["2217"],
-        "Torgue Explosive": ["2218", "2219"],
-        "Torgue Kinetic": ["221a", "221b"],
-        "Daedalus Kinetic": ["221c", "221d"],
-        "Daedalus Precision": ["221e", "221f"],
-        "COV Kinetic": ["2220", "2221"],
-        "COV Explosive": ["2222", "2223"],
-        "Ripper Kinetic": ["2224", "2225"],
-        "Ripper Melee": ["2226", "2227"],
+    const ELEMENTAL_PATTERNS = {
+        "CORR": "01010000",
+        "CRYO": "11010000",
+        "FIRE": "00110000",
+        "RAD": "10110000",
+        "SHOCK": "01110000",
+        "KINETIC": "01011010",
+        "CORR (alt)": "10101000",
+        "CRYO (alt)": "11101000",
+        "FIRE (alt)": "10011000",
+        "RAD (alt)": "11011000",
+        "SHOCK (alt)": "10111000",
     };
     const MANUFACTURER_PATTERNS = {
         "Jakobs": [
@@ -308,26 +306,23 @@ const SerialEditor = () => {
         setLevel(detectedLevel);
         setLevelFoundAt(levelPos);
 
-        let foundBulletType: string | null = null;
-        let foundBulletHex: string | null = null;
-        let foundBulletIndex: number | null = null;
+        let foundElement: string | null = null;
+        let foundElementPattern: string | null = null;
+        let foundElementIndex: number | null = null;
 
-        for (const [type, patterns] of Object.entries(BULLET_TYPE_PATTERNS)) {
-            for (const pattern of patterns) {
-                const index = hex_data.indexOf(pattern);
-                if (index !== -1) {
-                    foundBulletType = type;
-                    foundBulletHex = pattern;
-                    foundBulletIndex = index;
-                    break;
-                }
+        for (const [element, pattern] of Object.entries(ELEMENTAL_PATTERNS)) {
+            const index = binary_string.indexOf(pattern);
+            if (index !== -1) {
+                foundElement = element;
+                foundElementPattern = pattern;
+                foundElementIndex = index;
+                break;
             }
-            if (foundBulletType) break;
         }
 
-        setBulletType(foundBulletType);
-        setBulletTypeHex(foundBulletHex);
-        setBulletTypeFoundAt(foundBulletIndex);
+        setElement(foundElement);
+        setElementPattern(foundElementPattern);
+        setElementFoundAt(foundElementIndex);
 
         setAnalysis({
             type: serialType,
@@ -336,7 +331,7 @@ const SerialEditor = () => {
             safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
             level: detectedLevel,
-            bulletType: foundBulletType,
+            element: foundElement,
         });
     };
 
