@@ -114,49 +114,19 @@ export function generateSegmentReversalMutation(baseTail, originalSerial, finalL
 export function generatePartManipulationMutation(baseTail, parentTail, highValueParts, legendaryChance, mutableStart, mutableEnd, finalLength) {
     if (self.debugMode) console.log(`[DEBUG] > TG3: Part Manipulation | range: ${mutableStart}-${mutableEnd}`);
 
-    // Behavior 2: Part Stacking (if no mutable range)
-    if (mutableStart === mutableEnd) {
-        if (getNextRandom() < legendaryChance && highValueParts.length > 0) {
-            if (self.debugMode) console.log('[DEBUG]   > Part Stacking triggered!');
-            const part = randomChoice(highValueParts);
-            const protectedPart = baseTail.substring(0, mutableStart);
-            const availableSpace = finalLength - protectedPart.length;
-            if (availableSpace >= part.length) {
-                const numRepeats = Math.floor(availableSpace / part.length);
-                if (numRepeats > 0) {
-                    const repeatedBlock = new Array(numRepeats).fill(part).join('');
-                    let finalTail = protectedPart + repeatedBlock;
-                    // Fill any remaining space
-                    finalTail += generateAppendMutation('', finalLength - finalTail.length, 0);
-                    if (self.debugMode) console.log(`[DEBUG]     > Stacked part "${part}" ${numRepeats} times.`);
-                    return finalTail.substring(0, finalLength);
-                }
-            }
-        }
-        // Fallback to simple append if stacking doesn't trigger
-        return generateAppendMutation(baseTail, finalLength, mutableStart);
-    }
+    let mutatedTail = baseTail;
 
-    // Behavior 1: Part Swap (if mutable range is set)
-    if (highValueParts.length > 0) {
-        const partToInject = randomChoice(highValueParts);
-        const availableSpace = mutableEnd - mutableStart;
-
-        if (partToInject.length <= availableSpace) {
-            const start = randomInt(mutableStart, mutableEnd - partToInject.length);
-            const prefix = baseTail.substring(0, start);
-            const suffix = baseTail.substring(start + partToInject.length);
-            if (self.debugMode) console.log(`[DEBUG]   > Part Swap: Swapping in "${partToInject}" at index ${start}.`);
-            return (prefix + partToInject + suffix).substring(0, finalLength);
+    if (getNextRandom() < legendaryChance && highValueParts.length > 0) {
+        const part = randomChoice(highValueParts);
+        const availableMutableSpace = finalLength - mutableStart;
+        if (availableMutableSpace >= part.length) {
+            const repeatedBlock = part.repeat(5).substring(0, availableMutableSpace);
+            const prefixLength = finalLength - repeatedBlock.length;
+            mutatedTail = mutatedTail.substring(0, prefixLength) + repeatedBlock;
         }
     }
-    
-    // Fallback if no suitable part is found for swapping: do a simple crossover in the mutable range
-    if (self.debugMode) console.log(`[DEBUG]   > Part Swap failed, falling back to crossover.`);
-    const prefix = baseTail.substring(0, mutableStart);
-    const crossoverChunk = parentTail.substring(0, mutableEnd - mutableStart);
-    const suffix = baseTail.substring(mutableEnd);
-    return (prefix + crossoverChunk + suffix).substring(0, finalLength);
+
+    return mutatedTail;
 }
 
 // TG4: Repository Crossover (Very High Intensity)

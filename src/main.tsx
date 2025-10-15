@@ -249,11 +249,6 @@ const App = () => {
         setState((prev) => ({
             ...prev, 
             seed: newSeed,
-            rules: {
-                ...prev.rules,
-                mutableStart: newSeed.length,
-                mutableEnd: newSeed.length
-            }
         }));
     };
     const startGeneration = () => {
