@@ -15,7 +15,7 @@ const SerialEditor = () => {
         safeEditStart: number | string;
         safeEditEnd: number | string;
         level: number | string;
-        element: string | null;
+        elements: { element: string; index: number }[];
         bulletType: string | null;
     } | null>(null);
     const [binary, setBinary] = useState<string>('');
@@ -23,9 +23,7 @@ const SerialEditor = () => {
     const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
     const [level, setLevel] = useState<number | null>(null);
     const [levelFoundAt, setLevelFoundAt] = useState<number | null>(null);
-    const [element, setElement] = useState<string | null>(null);
-    const [elementPattern, setElementPattern] = useState<string | null>(null);
-    const [elementFoundAt, setElementFoundAt] = useState<number | null>(null);
+    const [foundElements, setFoundElements] = useState<{ element: string; pattern: string; index: number }[]>([]);
     const [bulletType, setBulletType] = useState<string | null>(null);
     const [bulletTypeHex, setBulletTypeHex] = useState<string | null>(null);
     const [bulletTypeFoundAt, setBulletTypeFoundAt] = useState<number | null>(null);
@@ -326,21 +324,18 @@ const SerialEditor = () => {
         setLevelFoundAt(levelPos);
 
         // Elemental Pattern Detection (Binary)
-        let foundElement: string | null = null;
-        let foundElementPattern: string | null = null;
-        let foundElementIndex: number | null = null;
+        const allFoundElements: { element: string; pattern: string; index: number }[] = [];
         for (const [element, pattern] of Object.entries(ELEMENTAL_PATTERNS)) {
-            const index = binary_string.indexOf(pattern);
-            if (index !== -1) {
-                foundElement = element;
-                foundElementPattern = pattern;
-                foundElementIndex = index;
-                break;
+            let startIndex = 0;
+            while (startIndex < binary_string.length) {
+                const index = binary_string.indexOf(pattern, startIndex);
+                if (index === -1) break;
+                allFoundElements.push({ element, pattern, index });
+                startIndex = index + pattern.length;
             }
         }
-        setElement(foundElement);
-        setElementPattern(foundElementPattern);
-        setElementFoundAt(foundElementIndex);
+        allFoundElements.sort((a, b) => a.index - b.index);
+        setFoundElements(allFoundElements);
 
         // Bullet Type Pattern Detection (Hex)
         let foundBulletType: string | null = null;
@@ -369,7 +364,7 @@ const SerialEditor = () => {
             safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
             level: detectedLevel,
-            element: foundElement,
+            elements: allFoundElements.map(e => ({ element: e.element, index: e.index })),
             bulletType: foundBulletType,
         });
     };
@@ -435,16 +430,20 @@ const SerialEditor = () => {
         }
     };
 
-    const handleElementChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newElement = e.target.value;
+    const handleElementChange = (occurrenceIndex: number, newElement: string) => {
         const newPattern = ELEMENTAL_PATTERNS[newElement];
+        const occurrence = foundElements[occurrenceIndex];
 
-        if (elementFoundAt !== null) {
-            const prefix = modifiedBinary.substring(0, elementFoundAt);
-            const suffix = modifiedBinary.substring(elementFoundAt + 8);
-            setModifiedBinary(prefix + newPattern + suffix);
-            setElement(newElement);
-            setElementPattern(newPattern);
+        if (occurrence) {
+            const prefix = modifiedBinary.substring(0, occurrence.index);
+            const suffix = modifiedBinary.substring(occurrence.index + occurrence.pattern.length);
+            const newModifiedBinary = prefix + newPattern + suffix;
+            setModifiedBinary(newModifiedBinary);
+
+            // Update the foundElements state to reflect the change
+            const newFoundElements = [...foundElements];
+            newFoundElements[occurrenceIndex] = { ...newFoundElements[occurrenceIndex], element: newElement, pattern: newPattern };
+            setFoundElements(newFoundElements);
         }
     };
 
@@ -571,7 +570,12 @@ const SerialEditor = () => {
                     <p><strong>Type:</strong> {analysis.type}</p>
                     <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
                     <p><strong>Level:</strong> {analysis.level}</p>
-                    {analysis.element && <p><strong>Element:</strong> {analysis.element}</p>}
+                    {analysis.elements.length > 0 && (
+                        <p><strong>Elements:</strong> {(() => {
+                            const elementCounts = analysis.elements.map(e => e.element).reduce((acc, el) => ({ ...acc, [el]: (acc[el] || 0) + 1 }), {});
+                            return Object.entries(elementCounts).map(([el, count]) => `${el}${count > 1 ? ` (x${count})` : ''}`).join(', ');
+                        })()}</p>
+                    )}
                     {analysis.bulletType && <p><strong>Bullet Type:</strong> {analysis.bulletType}</p>}
                     <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">
                         {bulletTypeFoundAt !== null && analysis.hex ? (
@@ -590,16 +594,18 @@ const SerialEditor = () => {
                         <input type="number" value={level} onChange={handleLevelChange} className={inputClasses} min="0" max="50" />
                     </FormGroup>
 
-                    {element && (
+                    {foundElements.length > 0 && (
                         <>
                             <h3 className="text-lg font-semibold mt-2">Element Editor</h3>
-                            <FormGroup label="Element">
-                                <select value={element} onChange={handleElementChange} className={inputClasses}>
-                                    {Object.keys(ELEMENTAL_PATTERNS).map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                            </FormGroup>
+                            {foundElements.map((element, index) => (
+                                <FormGroup key={index} label={`Element at index ${element.index}`}>
+                                    <select value={element.element} onChange={(e) => handleElementChange(index, e.target.value)} className={inputClasses}>
+                                        {Object.keys(ELEMENTAL_PATTERNS).map(type => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </FormGroup>
+                            ))}
                         </>
                     )}
 
@@ -633,19 +639,39 @@ const SerialEditor = () => {
                     </div>
                     <h3 className="text-lg font-semibold mt-2">Modified Binary Data</h3>
                     <div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
-                        {elementFoundAt !== null ? (
-                            <>
-                                {modifiedBinary.substring(0, elementFoundAt)}
-                                <span className="bg-purple-900 text-purple-300">{modifiedBinary.substring(elementFoundAt, elementFoundAt + 8)}</span>
-                                {modifiedBinary.substring(elementFoundAt + 8)}
-                            </>
-                        ) : (
-                            <>
-                                <span>{modifiedBinary.substring(0, selection.start)}</span>
-                                <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
-                                <span>{modifiedBinary.substring(selection.end)}</span>
-                            </>
-                        )}
+                        {(() => {
+                            if (foundElements.length === 0) {
+                                return (
+                                    <>
+                                        <span>{modifiedBinary.substring(0, selection.start)}</span>
+                                        <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
+                                        <span>{modifiedBinary.substring(selection.end)}</span>
+                                    </>
+                                );
+                            }
+
+                            const sortedElements = [...foundElements].sort((a, b) => a.index - b.index);
+                            let lastIndex = 0;
+                            const parts = [];
+
+                            sortedElements.forEach((element, i) => {
+                                if (element.index > lastIndex) {
+                                    parts.push(<span key={`part-${i}-pre`}>{modifiedBinary.substring(lastIndex, element.index)}</span>);
+                                }
+                                parts.push(
+                                    <span key={`part-${i}-element`} className="bg-purple-900 text-purple-300">
+                                        {modifiedBinary.substring(element.index, element.index + element.pattern.length)}
+                                    </span>
+                                );
+                                lastIndex = element.index + element.pattern.length;
+                            });
+
+                            if (lastIndex < modifiedBinary.length) {
+                                parts.push(<span key="part-final">{modifiedBinary.substring(lastIndex)}</span>);
+                            }
+
+                            return parts;
+                        })()}
                     </div>
                     {modifiedBase85 && (
                         <div className="mt-4">
