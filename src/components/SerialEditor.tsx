@@ -15,7 +15,8 @@ const SerialEditor = () => {
         safeEditStart: number | string;
         safeEditEnd: number | string;
         level: number | string;
-        elements: { element: string; index: number }[];
+
+        v2Element: { element: string; index: number; pattern: string } | null;
         bulletType: string | null;
     } | null>(null);
     const [binary, setBinary] = useState<string>('');
@@ -23,25 +24,22 @@ const SerialEditor = () => {
     const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
     const [level, setLevel] = useState<number | null>(null);
     const [levelFoundAt, setLevelFoundAt] = useState<number | null>(null);
-    const [foundElements, setFoundElements] = useState<{ element: string; pattern: string; index: number }[]>([]);
+
     const [bulletType, setBulletType] = useState<string | null>(null);
     const [bulletTypeHex, setBulletTypeHex] = useState<string | null>(null);
     const [bulletTypeFoundAt, setBulletTypeFoundAt] = useState<number | null>(null);
+    const [foundV2Element, setFoundV2Element] = useState<{ element: string; pattern: string; index: number } | null>(null);
 
 
     const BASE85_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{/}~';
-    const ELEMENTAL_PATTERNS = {
-        "CORR": "01010000",
-        "CRYO": "11010000",
-        "FIRE": "00110000",
-        "RAD": "10110000",
-        "SHOCK": "01110000",
-        "KINETIC": "01011010",
-        "CORR (alt)": "10101000",
-        "CRYO (alt)": "11101000",
-        "FIRE (alt)": "10011000",
-        "RAD (alt)": "11011000",
-        "SHOCK (alt)": "10111000",
+
+    const ELEMENT_FLAG = '0001010110000';
+    const ELEMENTAL_PATTERNS_V2 = {
+        "CORR": "10101000",
+        "CRYO": "11101000",
+        "FIRE": "10011000",
+        "RAD": "11011000",
+        "SHOCK": "10111000",
     };
     const BULLET_TYPE_PATTERNS = {
         "Jakobs Kinetic": ["2210", "2211"],
@@ -323,19 +321,7 @@ const SerialEditor = () => {
         setLevel(detectedLevel);
         setLevelFoundAt(levelPos);
 
-        // Elemental Pattern Detection (Binary)
-        const allFoundElements: { element: string; pattern: string; index: number }[] = [];
-        for (const [element, pattern] of Object.entries(ELEMENTAL_PATTERNS)) {
-            let startIndex = 0;
-            while (startIndex < binary_string.length) {
-                const index = binary_string.indexOf(pattern, startIndex);
-                if (index === -1) break;
-                allFoundElements.push({ element, pattern, index });
-                startIndex = index + pattern.length;
-            }
-        }
-        allFoundElements.sort((a, b) => a.index - b.index);
-        setFoundElements(allFoundElements);
+
 
         // Bullet Type Pattern Detection (Hex)
         let foundBulletType: string | null = null;
@@ -357,6 +343,20 @@ const SerialEditor = () => {
         setBulletTypeHex(foundBulletHex);
         setBulletTypeFoundAt(foundBulletIndex);
 
+        // V2 Elemental Pattern Detection
+        const v2ElementIndex = binary_string.indexOf(ELEMENT_FLAG);
+        let foundV2ElementData: { element: string; pattern: string; index: number } | null = null;
+        if (v2ElementIndex !== -1) {
+            const elementStartIndex = v2ElementIndex + ELEMENT_FLAG.length;
+            const elementPattern = binary_string.substring(elementStartIndex, elementStartIndex + 8);
+            const foundElement = Object.entries(ELEMENTAL_PATTERNS_V2).find(([, pattern]) => pattern === elementPattern);
+            if (foundElement) {
+                foundV2ElementData = { element: foundElement[0], pattern: foundElement[1], index: elementStartIndex };
+                setFoundV2Element(foundV2ElementData);
+            }
+        }
+
+
         setAnalysis({
             type: serialType,
             manufacturer: manufacturer,
@@ -364,7 +364,7 @@ const SerialEditor = () => {
             safeEditStart: safeEditStart > 2 ? safeEditStart : 'N/A',
             safeEditEnd: safeEditEnd > safeEditStart ? safeEditEnd : 'N/A',
             level: detectedLevel,
-            elements: allFoundElements.map(e => ({ element: e.element, index: e.index })),
+            v2Element: foundV2ElementData,
             bulletType: foundBulletType,
         });
     };
@@ -430,20 +430,17 @@ const SerialEditor = () => {
         }
     };
 
-    const handleElementChange = (occurrenceIndex: number, newElement: string) => {
-        const newPattern = ELEMENTAL_PATTERNS[newElement];
-        const occurrence = foundElements[occurrenceIndex];
 
-        if (occurrence) {
-            const prefix = modifiedBinary.substring(0, occurrence.index);
-            const suffix = modifiedBinary.substring(occurrence.index + occurrence.pattern.length);
+
+    const handleV2ElementChange = (newElement: string) => {
+        if (foundV2Element) {
+            const newPattern = ELEMENTAL_PATTERNS_V2[newElement];
+            const prefix = modifiedBinary.substring(0, foundV2Element.index);
+            const suffix = modifiedBinary.substring(foundV2Element.index + foundV2Element.pattern.length);
             const newModifiedBinary = prefix + newPattern + suffix;
             setModifiedBinary(newModifiedBinary);
 
-            // Update the foundElements state to reflect the change
-            const newFoundElements = [...foundElements];
-            newFoundElements[occurrenceIndex] = { ...newFoundElements[occurrenceIndex], element: newElement, pattern: newPattern };
-            setFoundElements(newFoundElements);
+            setFoundV2Element({ ...foundV2Element, element: newElement, pattern: newPattern });
         }
     };
 
@@ -570,12 +567,8 @@ const SerialEditor = () => {
                     <p><strong>Type:</strong> {analysis.type}</p>
                     <p><strong>Manufacturer:</strong> {analysis.manufacturer}</p>
                     <p><strong>Level:</strong> {analysis.level}</p>
-                    {analysis.elements.length > 0 && (
-                        <p><strong>Elements:</strong> {(() => {
-                            const elementCounts = analysis.elements.map(e => e.element).reduce((acc, el) => ({ ...acc, [el]: (acc[el] || 0) + 1 }), {});
-                            return Object.entries(elementCounts).map(([el, count]) => `${el}${count > 1 ? ` (x${count})` : ''}`).join(', ');
-                        })()}</p>
-                    )}
+
+                    {analysis.v2Element && <p><strong>Element:</strong> {analysis.v2Element.element} at index {analysis.v2Element.index}</p>}
                     {analysis.bulletType && <p><strong>Bullet Type:</strong> {analysis.bulletType}</p>}
                     <p><strong>Hex:</strong> <span className="font-mono text-xs break-all">
                         {bulletTypeFoundAt !== null && analysis.hex ? (
@@ -594,18 +587,18 @@ const SerialEditor = () => {
                         <input type="number" value={level} onChange={handleLevelChange} className={inputClasses} min="0" max="50" />
                     </FormGroup>
 
-                    {foundElements.length > 0 && (
+
+
+                    {foundV2Element && (
                         <>
                             <h3 className="text-lg font-semibold mt-2">Element Editor</h3>
-                            {foundElements.map((element, index) => (
-                                <FormGroup key={index} label={`Element at index ${element.index}`}>
-                                    <select value={element.element} onChange={(e) => handleElementChange(index, e.target.value)} className={inputClasses}>
-                                        {Object.keys(ELEMENTAL_PATTERNS).map(type => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                </FormGroup>
-                            ))}
+                            <FormGroup label={`Element at index ${foundV2Element.index}`}>
+                                <select value={foundV2Element.element} onChange={(e) => handleV2ElementChange(e.target.value)} className={inputClasses}>
+                                    {Object.keys(ELEMENTAL_PATTERNS_V2).map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </FormGroup>
                         </>
                     )}
 
@@ -640,37 +633,12 @@ const SerialEditor = () => {
                     <h3 className="text-lg font-semibold mt-2">Modified Binary Data</h3>
                     <div className="font-mono text-xs p-3 bg-gray-900 border border-gray-700 rounded-md break-all">
                         {(() => {
-                            if (foundElements.length === 0) {
-                                return (
-                                    <>
-                                        <span>{modifiedBinary.substring(0, selection.start)}</span>
-                                        <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
-                                        <span>{modifiedBinary.substring(selection.end)}</span>
-                                    </>
-                                );
-                            }
-
-                            const sortedElements = [...foundElements].sort((a, b) => a.index - b.index);
-                            let lastIndex = 0;
-                            const parts = [];
-
-                            sortedElements.forEach((element, i) => {
-                                if (element.index > lastIndex) {
-                                    parts.push(<span key={`part-${i}-pre`}>{modifiedBinary.substring(lastIndex, element.index)}</span>);
-                                }
-                                parts.push(
-                                    <span key={`part-${i}-element`} className="bg-purple-900 text-purple-300">
-                                        {modifiedBinary.substring(element.index, element.index + element.pattern.length)}
-                                    </span>
-                                );
-                                lastIndex = element.index + element.pattern.length;
-                            });
-
-                            if (lastIndex < modifiedBinary.length) {
-                                parts.push(<span key="part-final">{modifiedBinary.substring(lastIndex)}</span>);
-                            }
-
-                            return parts;
+                            return (
+                                <>
+                                    <span>{modifiedBinary.substring(0, selection.start)}</span>
+                                    <span className="bg-blue-900 text-blue-300">{modifiedBinary.substring(selection.start, selection.end)}</span>
+                                    <span>{modifiedBinary.substring(selection.end)}</span>
+                                </>);
                         })()}
                     </div>
                     {modifiedBase85 && (
