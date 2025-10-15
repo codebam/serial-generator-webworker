@@ -147,7 +147,7 @@ export function generatePartManipulationMutation(baseTail, parentTail, highValue
             const prefix = baseTail.substring(0, start);
             const suffix = baseTail.substring(start + partToInject.length);
             if (self.debugMode) console.log(`[DEBUG]   > Part Swap: Swapping in "${partToInject}" at index ${start}.`);
-            return prefix + partToInject + suffix;
+            return (prefix + partToInject + suffix).substring(0, finalLength);
         }
     }
     
@@ -156,11 +156,11 @@ export function generatePartManipulationMutation(baseTail, parentTail, highValue
     const prefix = baseTail.substring(0, mutableStart);
     const crossoverChunk = parentTail.substring(0, mutableEnd - mutableStart);
     const suffix = baseTail.substring(mutableEnd);
-    return prefix + crossoverChunk + suffix;
+    return (prefix + crossoverChunk + suffix).substring(0, finalLength);
 }
 
 // TG4: Repository Crossover (Very High Intensity)
-export function generateRepositoryCrossoverMutation(baseTail, parentTail, mutableStart, mutableEnd) {
+export function generateRepositoryCrossoverMutation(baseTail, parentTail, mutableStart, mutableEnd, finalLength) {
     if (self.debugMode) console.log(`[DEBUG] > TG4: Repository Crossover | range: ${mutableStart}-${mutableEnd}`);
     const prefix = baseTail.substring(0, mutableStart);
     const crossoverLength = mutableEnd - mutableStart;
@@ -178,5 +178,5 @@ export function generateRepositoryCrossoverMutation(baseTail, parentTail, mutabl
     }
 
     if (self.debugMode) console.log(`[DEBUG]   > Overwriting range ${mutableStart}-${mutableEnd} with chunk from parent.`);
-    return prefix + crossoverChunk + baseTail.substring(mutableEnd);
+    return (prefix + crossoverChunk + baseTail.substring(mutableEnd)).substring(0, finalLength);
 }

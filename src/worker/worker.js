@@ -145,13 +145,13 @@ uniqueCount: 0,
                         );
 						break;
 					case 'TG4':
-						mutatedTail = generateRepositoryCrossoverMutation(
-                            baseTail,
-                            parentTail,
-                            adjustedMutableStart,
-                            adjustedMutableEnd
-                        );
-						break;
+						                        mutatedTail = generateRepositoryCrossoverMutation(
+						                            baseTail,
+						                            parentTail,
+						                            adjustedMutableStart,
+						                            adjustedMutableEnd,
+						                            dynamicTargetLength
+						                        );						break;
 					default:
 						mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, protectedStartLength, config.itemType);
 				}
