@@ -509,7 +509,7 @@ const App = () => {
             																	className={inputClasses}
             																	disabled={isMerging}
             																/>
-            																<p className="text-xs text-gray-400">Swaps a high-value part with one from the repository, or stacks a repeating part if no mutable range is set.</p>
+            																<p className="text-xs text-gray-400">Injects a repeating high-value part at the end of the serial.</p>
             															</FormGroup>
             															<FormGroup label="TG4">
             																<input
