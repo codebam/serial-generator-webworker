@@ -12,6 +12,10 @@ interface MutableRangeSelectorProps {
 }
 
 const MutableRangeSelector: React.FC<MutableRangeSelectorProps> = ({ seed, start, end, setRange, inputClasses, isMerging }) => {
+    React.useEffect(() => {
+        setRange({ start: seed.length, end: seed.length });
+    }, [seed]);
+    
     const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         let intValue = parseInt(value, 10);
