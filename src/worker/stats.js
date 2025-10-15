@@ -18,49 +18,22 @@ export function calculateHighValuePartsStats(serials, minPartSize, maxPartSize, 
 
 	const tails = serials.map(getSerialTail).filter(Boolean);
 	const frequencyMap = new Map();
+	const totalSerials = tails.length;
 
-	// 1. Build a suffix array for all tails combined
-	const text = tails.join('\0'); // Use a null character to separate tails
-	const suffixArray = [];
-	for (let i = 0; i < text.length; i++) {
-		suffixArray.push(i);
-	}
-	suffixArray.sort((a, b) => {
-		const subA = text.substring(a);
-		const subB = text.substring(b);
-		return subA.localeCompare(subB);
-	});
-
-	// 2. Calculate the Longest Common Prefix (LCP) array
-	const lcpArray = new Array(suffixArray.length).fill(0);
-	for (let i = 1; i < suffixArray.length; i++) {
-		const s1 = text.substring(suffixArray[i - 1]);
-		const s2 = text.substring(suffixArray[i]);
-		let j = 0;
-		while (j < s1.length && j < s2.length && s1[j] === s2[j]) {
-			j++;
+	for (let i = 0; i < totalSerials; i++) {
+		const tail = tails[i];
+		const seenSubstrings = new Set();
+		for (let len = minPartSize; len <= maxPartSize; len++) {
+			for (let j = 0; j <= tail.length - len; j++) {
+				const substring = tail.substring(j, j + len);
+				seenSubstrings.add(substring);
+			}
 		}
-		lcpArray[i] = j;
-	}
-
-	// 3. Find frequent substrings using the LCP array
-	for (let i = 0; i < suffixArray.length; i++) {
-		let minLCP = Infinity;
-		for (let j = i + 1; j < suffixArray.length; j++) {
-			minLCP = Math.min(minLCP, lcpArray[j]);
-			const commonPrefixLength = minLCP;
-							if (commonPrefixLength >= minPartSize) {
-								const substring = text.substring(suffixArray[i], suffixArray[i] + commonPrefixLength);
-								const groupSize = j - i + 1;
-								for (let k = minPartSize; k <= Math.min(maxPartSize, substring.length); k++) {
-									const part = substring.substring(0, k);
-									frequencyMap.set(part, (frequencyMap.get(part) || 0) + groupSize);
-								}
-							} else {
-								break; // Optimization: LCP will only decrease from here
-							}		}
+		for (const substring of seenSubstrings) {
+			frequencyMap.set(substring, (frequencyMap.get(substring) || 0) + 1);
+		}
 		if (onProgress) {
-			onProgress(((i + 1) / suffixArray.length) * 100);
+			onProgress(((i + 1) / totalSerials) * 100);
 		}
 	}
 
