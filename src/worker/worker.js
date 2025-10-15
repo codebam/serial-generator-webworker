@@ -4,8 +4,9 @@ import { randomChoice, ensureCharset, splitHeaderTail, extractHighValueParts } f
 import { calculateHighValuePartsStats } from './stats.js';
 import { filterSerials } from './yaml-filter.js';
 import {
-    generateKnowledgeBasedMutation, // The new primary mutation function
     generateAppendMutation,
+    generateStackedPartMutationV1,
+    generateStackedPartMutationV2,
     generateCharacterFlipMutation,
     generateSegmentReversalMutation,
     generatePartManipulationMutation,
@@ -50,7 +51,7 @@ self.onmessage = async function (e) {
     if (debugMode) console.log('[DEBUG] Received generation config:', config);
 	try {
 		if (!getGpuDevice()) await setupWebGPU();
-		const totalRequested = config.newCount + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
+		const totalRequested = config.newCount + config.newV1Count + config.newV2Count + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
 		console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
 		if (totalRequested === 0) {
 			self.postMessage({
@@ -91,7 +92,9 @@ uniqueCount: 0,
 		};
 
 		const serialsToGenerate = [];
-		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW' });
+		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW_V0' });
+		for (let i = 0; i < config.newV1Count; i++) serialsToGenerate.push({ tg: 'NEW_V1' });
+		for (let i = 0; i < config.newV2Count; i++) serialsToGenerate.push({ tg: 'NEW_V2' });
 		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
 		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
 		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
@@ -124,8 +127,14 @@ uniqueCount: 0,
 				dynamicTargetLength = Math.max(dynamicTargetLength, protectedStartLength);
 
 				switch (item.tg) {
-					                    case 'NEW':
-                        mutatedTail = generateKnowledgeBasedMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
+					                    case 'NEW_V0':
+                        mutatedTail = generateAppendMutation(baseTail, dynamicTargetLength, adjustedMutableStart, config.itemType);
+                        break;
+                    case 'NEW_V1':
+                        mutatedTail = generateStackedPartMutationV1(baseTail, highValueParts, dynamicTargetLength, config.itemType);
+                        break;
+                    case 'NEW_V2':
+                        mutatedTail = generateStackedPartMutationV2(baseTail, highValueParts, dynamicTargetLength, config.itemType);
                         break;
 					case 'TG1':
 						mutatedTail = generateCharacterFlipMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);

@@ -1,13 +1,13 @@
 import { ALPHABET } from './constants.js';
 import { getNextRandom } from './gpu.js';
 import { randomInt, randomChoice } from './utils.js';
-import { 
-    SAFE_EDIT_ZONES, 
+import {
+    SAFE_EDIT_ZONES,
     STABLE_MOTIFS,
     alignToBase85,
-    getCharPoolForItemType
+    getCharPoolForItemType,
+    BASE85_ALPHABET
 } from './knowledge.js';
-
 
 // --- KNOWLEDGE-BASED MUTATION ---
 
@@ -72,6 +72,90 @@ export function generateKnowledgeBasedMutation(baseTail, originalSerial, finalLe
     if (self.debugMode) console.log(`[DEBUG]   > Final tail aligned and resized. Length: ${finalMutatedTail.length}`);
 
     return finalMutatedTail;
+}
+
+// --- NEW (v1) STACKED PART MUTATION (Full Alphabet) ---
+export function generateStackedPartMutationV1(baseTail, highValueParts, finalLength, itemType) {
+    if (self.debugMode) console.log(`[DEBUG] > NEW (v1) Stacked Part Mutation | finalLength: ${finalLength}`);
+
+    if (!highValueParts || highValueParts.length < 2) {
+        if (self.debugMode) console.warn(`[DEBUG]   > Not enough high-value parts available. Falling back to knowledge-based mutation.`);
+        return generateKnowledgeBasedMutation(baseTail, baseTail, finalLength, itemType);
+    }
+
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    
+    let mutatedTail = baseTail;
+
+    // Inject 2 high-value parts
+    for (let i = 0; i < 2; i++) {
+        const currentSafeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+        if (safeStart >= currentSafeEnd) break; // Stop if no safe space is left
+
+        const part = randomChoice(highValueParts);
+        const injectPosition = randomInt(safeStart, currentSafeEnd);
+        mutatedTail = mutatedTail.slice(0, injectPosition) + part + mutatedTail.slice(injectPosition);
+    }
+
+    // Adjust length to finalLength
+    let finalMutatedTail = mutatedTail;
+    if (finalMutatedTail.length > finalLength) {
+        finalMutatedTail = finalMutatedTail.substring(0, finalLength);
+    } else if (finalMutatedTail.length < finalLength) {
+        const paddingLength = finalLength - finalMutatedTail.length;
+        const charPool = BASE85_ALPHABET.split(''); // Use full alphabet
+        let padding = '';
+        for (let i = 0; i < paddingLength; i++) {
+            padding += randomChoice(charPool);
+        }
+        finalMutatedTail += padding;
+    }
+    
+    // Final alignment
+    return alignToBase85(finalMutatedTail, baseTail);
+}
+
+// --- NEW (v2) STACKED PART MUTATION (Restricted Alphabet) ---
+export function generateStackedPartMutationV2(baseTail, highValueParts, finalLength, itemType) {
+    if (self.debugMode) console.log(`[DEBUG] > NEW (v2) Stacked Part Mutation | finalLength: ${finalLength}`);
+
+    if (!highValueParts || highValueParts.length < 2) {
+        if (self.debugMode) console.warn(`[DEBUG]   > Not enough high-value parts available. Falling back to knowledge-based mutation.`);
+        return generateKnowledgeBasedMutation(baseTail, baseTail, finalLength, itemType);
+    }
+
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    
+    let mutatedTail = baseTail;
+
+    // Inject 2 high-value parts
+    for (let i = 0; i < 2; i++) {
+        const currentSafeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+        if (safeStart >= currentSafeEnd) break; // Stop if no safe space is left
+
+        const part = randomChoice(highValueParts);
+        const injectPosition = randomInt(safeStart, currentSafeEnd);
+        mutatedTail = mutatedTail.slice(0, injectPosition) + part + mutatedTail.slice(injectPosition);
+    }
+
+    // Adjust length to finalLength
+    let finalMutatedTail = mutatedTail;
+    if (finalMutatedTail.length > finalLength) {
+        finalMutatedTail = finalMutatedTail.substring(0, finalLength);
+    } else if (finalMutatedTail.length < finalLength) {
+        const paddingLength = finalLength - finalMutatedTail.length;
+        const charPool = getCharPoolForItemType(itemType); // Use item-specific alphabet
+        let padding = '';
+        for (let i = 0; i < paddingLength; i++) {
+            padding += randomChoice(charPool);
+        }
+        finalMutatedTail += padding;
+    }
+    
+    // Final alignment
+    return alignToBase85(finalMutatedTail, baseTail);
 }
 
 
