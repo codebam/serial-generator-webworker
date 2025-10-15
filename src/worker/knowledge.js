@@ -21,7 +21,7 @@ export const SAFE_EDIT_ZONES = {
 // Motifs observed in many stable, high-rate tails.
 export const STABLE_MOTIFS = [
     's#Bfn', 'RHr)Cs', 'ZMpOQ=', 'RHmr#', 'jWCPI', 'CPIanNo$6GlI', 
-    '@PI8', 'b*fXH>', 'P5=', 'I4', 'cl0', 'jWCP'
+    '@PI8', 'b*fXH>', 'P5=', 'I4', 'cl0', 'jWCP', 'Lft~$'
 ];
 
 // Perk Toggle System (VALIDATED)

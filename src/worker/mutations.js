@@ -194,8 +194,8 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
 
     const safeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
 
-    // 2. NEW: Motif Chaining (40% chance)
-    if (getNextRandom() < 0.4) {
+    // 2. NEW: Motif Chaining (30% chance)
+    if (getNextRandom() < 0.3) {
         if (safeStart < safeEnd) {
             let motifChain = '';
             const chainCount = randomInt(2, 3); // Chain 2 to 3 motifs
@@ -209,8 +209,8 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
         }
     }
 
-    // 3. Motif Injection (Single) (20% chance)
-    if (getNextRandom() < 0.2) {
+    // 3. Motif Injection (Single) (40% chance)
+    if (getNextRandom() < 0.4) {
         if (safeStart < safeEnd) {
             const motif = randomChoice(STABLE_MOTIFS);
             if (safeEnd - safeStart > motif.length) {
@@ -220,7 +220,7 @@ export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, f
         }
     }
 
-    // 4. Segment Scramble (20% chance)
+    // 4. Segment Scramble (20% chance) - Revert to using parameters for chunk sizes
     if (getNextRandom() < 0.2) {
         const chunkSize = randomInt(minChunkSize, maxChunkSize);
         if (safeEnd - safeStart > chunkSize) {
