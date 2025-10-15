@@ -168,7 +168,65 @@ export function generateStackedPartMutationV2(baseTail, minPartSize, maxPartSize
 }
 
 
-// --- REFACTORED MUTATION ALGORITHMS (Intensity Ladder) ---
+// --- NEW (v3) EVOLVING MUTATION ---
+export function generateEvolvingMutation(baseTail, minChunkSize, maxChunkSize, finalLength, itemType) {
+    if (self.debugMode) console.log(`[DEBUG] > NEW (v3) Evolving Mutation | finalLength: ${finalLength}`);
+
+    const headerLockIndex = baseTail.indexOf(SAFE_EDIT_ZONES.HEADER_LOCK_MARKER);
+    const safeStart = (headerLockIndex !== -1) ? headerLockIndex + SAFE_EDIT_ZONES.HEADER_LOCK_MARKER.length : 0;
+    
+    // 1. Length Adjustment
+    let mutatedTail = baseTail;
+    if (mutatedTail.length > finalLength) {
+        mutatedTail = mutatedTail.substring(0, finalLength);
+    } else if (mutatedTail.length < finalLength) {
+        const paddingLength = finalLength - mutatedTail.length;
+        const charPool = BASE85_ALPHABET.split('');
+        let padding = '';
+        for (let i = 0; i < paddingLength; i++) {
+            padding += randomChoice(charPool);
+        }
+        mutatedTail += padding;
+    }
+
+    const safeEnd = mutatedTail.length - SAFE_EDIT_ZONES.TRAILER_PRESERVE_LENGTH;
+
+    // 2. Motif Injection (20% chance)
+    if (getNextRandom() < 0.2) {
+        if (safeStart < safeEnd) {
+            const motif = randomChoice(STABLE_MOTIFS);
+            if (safeEnd - safeStart > motif.length) {
+                const injectPosition = randomInt(safeStart, safeEnd - motif.length);
+                mutatedTail = mutatedTail.slice(0, injectPosition) + motif + mutatedTail.slice(injectPosition);
+            }
+        }
+    }
+
+    // 3. Segment Scramble (30% chance)
+    if (getNextRandom() < 0.3) {
+        const chunkSize = randomInt(minChunkSize, maxChunkSize);
+        if (safeEnd - safeStart > chunkSize) {
+            const start = randomInt(safeStart, safeEnd - chunkSize);
+            const segment = mutatedTail.substring(start, start + chunkSize);
+            const reversedSegment = segment.split('').reverse().join('');
+            mutatedTail = mutatedTail.substring(0, start) + reversedSegment + mutatedTail.substring(start + chunkSize);
+        }
+    }
+
+    // 4. Character Flips (5% chance per character)
+    const chars = [...mutatedTail];
+    const charPool = BASE85_ALPHABET.split('');
+    for (let i = safeStart; i < safeEnd; i++) {
+        if (getNextRandom() < 0.05) {
+            chars[i] = randomChoice(charPool);
+        }
+    }
+    mutatedTail = chars.join('');
+
+    // Final alignment
+    return alignToBase85(mutatedTail, baseTail);
+}
+
 
 // NEW: Append-Only
 export function generateAppendMutation(baseTail, finalLength, protectedStartLength, itemType = 'GENERIC') {

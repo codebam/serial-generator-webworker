@@ -10,6 +10,7 @@ interface AppState {
         new: number;
         newV1: number;
         newV2: number;
+        newV3: number;
         tg1: number;
         tg2: number;
         tg3: number;
@@ -35,7 +36,7 @@ const App = () => {
         repository: '',
         seed: '@Uge9B?m/)}}!ffxLNwtrrhUgJFvP19)9>F7c1drg69->2ZNDt8=I>e4x5g)=u;D`>fBRx?3?tmf{sYpdCQjv<(7NJN*DpHY(R3rc',
         itemType: 'GUN', // <-- NEW: Default item type
-        counts: { new: 10000, newV1: 0, newV2: 0, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
+        counts: { new: 10000, newV1: 0, newV2: 0, newV3: 0, tg1: 0, tg2: 0, tg3: 0, tg4: 0 },
         rules: {
             targetOffset: 200,
             mutableStart: 13,
@@ -266,6 +267,7 @@ const App = () => {
             newCount: parseInt(state.counts.new || '0', 10),
             newV1Count: parseInt(state.counts.newV1 || '0', 10),
             newV2Count: parseInt(state.counts.newV2 || '0', 10),
+            newV3Count: parseInt(state.counts.newV3 || '0', 10),
             tg1Count: parseInt(state.counts.tg1 || '0', 10),
             tg2Count: parseInt(state.counts.tg2 || '0', 10),
             tg3Count: parseInt(state.counts.tg3 || '0', 10),
@@ -494,18 +496,28 @@ const App = () => {
 																			/>
 																			<p className="text-xs text-gray-400">Injects two randomly generated repeating parts (full alphabet).</p>
 										</FormGroup>
-										<FormGroup label="NEW (v2)">
-																			<input
-																				type="number"
-																				name="counts.newV2"
-																				value={state.counts.newV2}
-																				onChange={handleInputChange}
-																				className={inputClasses}
-																				disabled={isMerging}
-																			/>
-																			<p className="text-xs text-gray-400">Injects two randomly generated repeating parts (restricted alphabet).</p>
-										</FormGroup>
-            							<FormGroup label="TG1">
+										            							<FormGroup label="NEW (v2)">
+																													<input
+																														type="number"
+																														name="counts.newV2"
+																														value={state.counts.newV2}
+																														onChange={handleInputChange}
+																														className={inputClasses}
+																														disabled={isMerging}
+																													/>
+																													<p className="text-xs text-gray-400">Injects two randomly generated repeating parts (restricted alphabet).</p>
+																				</FormGroup>
+																				<FormGroup label="NEW (v3)">
+																													<input
+																														type="number"
+																														name="counts.newV3"
+																														value={state.counts.newV3}
+																														onChange={handleInputChange}
+																														className={inputClasses}
+																														disabled={isMerging}
+																													/>
+																													<p className="text-xs text-gray-400">Experimental algorithm for data gathering.</p>
+																				</FormGroup>            							<FormGroup label="TG1">
             								                                <input
             																	type="number"
             																	name="counts.tg1"

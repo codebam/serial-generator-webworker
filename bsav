@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+
+import crypto from 'crypto';
+import zlib from 'zlib';
+import { TextEncoder, TextDecoder } from 'util';
+
+function utf16leBytes(str) {
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    bytes.push(code & 0xff, (code >> 8) & 0xff);
+  }
+  return Buffer.from(bytes);
+}
+
+function deriveKey(userID) {
+  const BASE_KEY = Buffer.from([
+    0x35, 0xec, 0x33, 0x77, 0xf3, 0x5d, 0xb0, 0xea, 0xbe, 0x6b, 0x83, 0x11,
+    0x54, 0x03, 0xeb, 0xfb, 0x27, 0x25, 0x64, 0x2e, 0xd5, 0x49, 0x06, 0x29,
+    0x05, 0x78, 0xbd, 0x60, 0xba, 0x4a, 0xa7, 0x87,
+  ]);
+  let k = Buffer.from(BASE_KEY);
+
+  let uid_bytes;
+  if (/^\d{17,}$/.test(userID)) {
+    // Steam ID: treat as 8-byte little-endian
+    let sid = BigInt(userID);
+    uid_bytes = Buffer.alloc(8);
+    for (let i = 0; i < 8; i++) {
+      uid_bytes[i] = Number(sid & 0xffn);
+      sid >>= 8n;
+    }
+  } else {
+    // Epic ID: UTF-16LE bytes
+    uid_bytes = utf16leBytes(userID);
+  }
+
+  for (let i = 0; i < Math.min(k.length, uid_bytes.length); i++) {
+    k[i] ^= uid_bytes[i];
+  }
+  return k;
+}
+
+function pkcs7Unpad(buf) {
+  const pad = buf[buf.length - 1];
+  // Check that all pad bytes are the same
+  if (pad > buf.length) {
+    console.warn('Invalid padding size, returning original data');
+    return buf;
+  }
+  for (let i = 1; i <= pad; i++) {
+    if (buf[buf.length - i] !== pad) {
+      console.warn('PKCS7 unpad failed, returning padded data');
+      return buf;
+    }
+  }
+  return buf.slice(0, buf.length - pad);
+}
+
+function pkcs7Pad(buf, blockSize = 16) {
+  const pad = blockSize - (buf.length % blockSize);
+  const out = Buffer.alloc(buf.length + pad, pad);
+  buf.copy(out);
+  return out;
+}
+
+async function decryptSav(ciph, userID) {
+  const keyBytes = deriveKey(userID);
+
+  const decipher = crypto.createDecipheriv('aes-256-ecb', keyBytes, null);
+  decipher.setAutoPadding(false);
+  let pt = Buffer.concat([decipher.update(ciph), decipher.final()]);
+
+  pt = pkcs7Unpad(pt);
+
+  let trimOptions = [4, 8];
+  for (let trim of trimOptions) {
+    try {
+      let candidate = pt.slice(0, pt.length - trim);
+      // Check for zlib header
+      if (candidate[0] !== 0x78) continue;
+      const inflated = zlib.inflateSync(candidate);
+      return new TextDecoder().decode(inflated);
+    } catch (e) {
+      // Try next trim value
+    }
+  }
+  throw new Error('Zlib decompress failed. Wrong user ID or file format?');
+}
+
+async function encryptSav(yaml, userID) {
+  const yamlBytes = new TextEncoder().encode(yaml);
+
+  const comp = zlib.deflateSync(yamlBytes, { level: 9 });
+
+  function adler32(buf) {
+    let a = 1, b = 0;
+    for (let i = 0; i < buf.length; i++) {
+      a = (a + buf[i]) % 65521;
+      b = (b + a) % 65521;
+    }
+    // THE FIX IS HERE: `>>> 0` ensures the result is an unsigned 32-bit integer.
+    return ((b << 16) | a) >>> 0;
+  }
+  const adler = adler32(yamlBytes);
+  const uncompressedLen = yamlBytes.length;
+
+  const packed = Buffer.alloc(comp.length + 8);
+  comp.copy(packed);
+  packed.writeUInt32LE(adler, comp.length);
+  packed.writeUInt32LE(uncompressedLen, comp.length + 4);
+
+  const pt_padded = pkcs7Pad(packed);
+
+  const keyBytes = deriveKey(userID);
+  const cipher = crypto.createCipheriv('aes-256-ecb', keyBytes, null);
+  cipher.setAutoPadding(false);
+  return Buffer.concat([cipher.update(pt_padded), cipher.final()]);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const mode = args[0];
+  const userID = args[1];
+
+  if (!mode || !userID) {
+    console.error('Usage: bsav [-d|-e] <userID>');
+    console.error('  -d: Decrypt from stdin');
+    console.error('  -e: Encrypt from stdin');
+    process.exit(1);
+  }
+
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  const input = Buffer.concat(chunks);
+
+  try {
+    if (mode === '-d') {
+      const decrypted = await decryptSav(input, userID);
+      process.stdout.write(decrypted);
+    } else if (mode === '-e') {
+      const encrypted = await encryptSav(input.toString('utf8'), userID);
+      process.stdout.write(encrypted);
+    } else {
+      console.error('Invalid mode. Use -d for decrypt or -e for encrypt.');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error("An error occurred:", error.message);
+    process.exit(1);
+  }
+}
+
+main();

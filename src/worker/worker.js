@@ -7,6 +7,7 @@ import {
     generateAppendMutation,
     generateStackedPartMutationV1,
     generateStackedPartMutationV2,
+    generateEvolvingMutation,
     generateCharacterFlipMutation,
     generateSegmentReversalMutation,
     generatePartManipulationMutation,
@@ -51,7 +52,7 @@ self.onmessage = async function (e) {
     if (debugMode) console.log('[DEBUG] Received generation config:', config);
 	try {
 		if (!getGpuDevice()) await setupWebGPU();
-		const totalRequested = config.newCount + config.newV1Count + config.newV2Count + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
+		const totalRequested = config.newCount + config.newV1Count + config.newV2Count + config.newV3Count + config.tg1Count + config.tg2Count + config.tg3Count + config.tg4Count;
 		console.log(`[DEBUG] Total serials requested: ${totalRequested}`);
 		if (totalRequested === 0) {
 			self.postMessage({
@@ -95,6 +96,7 @@ uniqueCount: 0,
 		for (let i = 0; i < config.newCount; i++) serialsToGenerate.push({ tg: 'NEW_V0' });
 		for (let i = 0; i < config.newV1Count; i++) serialsToGenerate.push({ tg: 'NEW_V1' });
 		for (let i = 0; i < config.newV2Count; i++) serialsToGenerate.push({ tg: 'NEW_V2' });
+		for (let i = 0; i < config.newV3Count; i++) serialsToGenerate.push({ tg: 'NEW_V3' });
 		for (let i = 0; i < config.tg1Count; i++) serialsToGenerate.push({ tg: 'TG1' });
 		for (let i = 0; i < config.tg2Count; i++) serialsToGenerate.push({ tg: 'TG2' });
 		for (let i = 0; i < config.tg3Count; i++) serialsToGenerate.push({ tg: 'TG3' });
@@ -135,6 +137,9 @@ uniqueCount: 0,
                         break;
                     case 'NEW_V2':
                         mutatedTail = generateStackedPartMutationV2(baseTail, config.minPartSize, config.maxPartSize, dynamicTargetLength, config.itemType);
+                        break;
+                    case 'NEW_V3':
+                        mutatedTail = generateEvolvingMutation(baseTail, config.minChunkSize, config.maxChunkSize, dynamicTargetLength, config.itemType);
                         break;
 					case 'TG1':
 						mutatedTail = generateCharacterFlipMutation(baseTail, config.seed || DEFAULT_SEED, dynamicTargetLength, config.itemType);
